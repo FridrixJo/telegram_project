@@ -14,16 +14,11 @@ Phone = '79264892749'
 #   Phone = '79852059341'
 
 if not db.account_exists(Phone):
-    data = Api_Data()
-    params_list = data.login(Phone)
+    data = Api_Data(Phone)
+    data.login()
 
-    db.add_account(Phone)
+    db.add_phone_number(Phone)
 
-    Id = params_list[0]
-    db.set_api_id(Phone, Id)
-
-    Hash = params_list[1]
-    db.set_api_hash(Phone, Hash)
 else:
     Id = db.get_api_id(Phone)
     Hash = db.get_api_hash(Phone)

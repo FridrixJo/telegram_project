@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
+import asyncio
 
 import telebot
 from telebot import types
@@ -14,6 +15,11 @@ from data_bases.db import AccountsDB
 from data_bases.users import UsersDB
 
 from scripts.get_authorized import Api_Data
+from scripts.main_script import Script
+
+from asyncio import set_event_loop, new_event_loop
+
+import threading
 
 bot = telebot.TeleBot('5583638970:AAE9RTGf3u3hzbvV9VkhwJfQSRXfQfuwRxw')
 
@@ -35,9 +41,9 @@ def inline_markup_menu():
 
     return kb
 
-def inline_markup_back():
+def inline_markup_back(text):
     kb = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton('Назад', callback_data='back')
+    btn1 = types.InlineKeyboardButton(text, callback_data='back')
 
     kb.add(btn1)
 
@@ -71,67 +77,142 @@ def start(call):
 
     if call.data == 'add_account':
         bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
-        add_account(call.message, 'Добавление акканута, введите номер в формате 79161234567')
+        add_account(call.message, 'Добавление акканута, введите номер в формате +79161234567')
 
     if call.data == 'active_accounts':
-       bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text='Список всех активных аккаунтов', reply_markup=inline_markup_back())
+       bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text='Список всех активных аккаунтов', reply_markup=inline_markup_back('Назад'))
 
     if call.data == 'about':
         bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
         about(call.message)
 
-def input_number(message, prev_message_id):
-    reg = r"[\d]{9,16}"
-    if re.search(reg,message.text):
-        bot.edit_message_text(chat_id=message.chat.id, message_id=prev_message_id, text='Немного подождите ...')
-        if db.account_exists(message.text):
-            pass
-        else:
-            data = Api_Data()
-            params_list = data.login(message.text)
+    if call.data == 'start':
+        bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
+        get_chat_link(call.message)
 
-            phone = message.text
 
-            if len(params_list) >= 3:
-                db.add_phone_number(phone)
-                db.set_api_id(phone, params_list[0])
-                db.set_api_hash(phone, params_list[1])
-
+def input_code_combination(message, prev_message_id, data):
+    if message.text == 'Не приходит код, добавить другой акканут':
+        add_account(message, 'Добавление акканута, введите номер в формате +79161234567')
+    else:
+        data.input_password(message.text)
+        #print("qwertyjhgfdsdfghjhgfdghjkjhgfdfgh")
         bot.delete_message(chat_id=message.chat.id, message_id=prev_message_id)
+        waiting_message = bot.send_message(message.chat.id, 'Немного подождите ...')
+
+        params = data.getting_data()
+        if len(params):
+            Phone = params[2]
+            db.add_phone_number(Phone)
+            db.set_api_id(Phone, params[0])
+            db.set_api_hash(Phone, params[1])
 
         time.sleep(0.2)
 
-        sent = bot.send_message(message.chat.id, 'Введите код, отправленный вам в Telegram', reply_markup=reply_markup_call_off('Не приходит код, добавить другой акканут'))
-        message_id = sent.message_id
-        bot.register_next_step_handler(sent, input_code_combination, message_id)
-    elif message.text == 'Отмена':
+        bot.delete_message(chat_id=message.chat.id, message_id=waiting_message.message_id)
+
+        bot.send_message(message.chat.id, str(params[0] + "  :  " + str(params[1])))
+
+        btn = types.InlineKeyboardButton(text='Начать рассылку', callback_data='start')
+        sent = bot.send_message(message.chat.id, 'Аккаунт добавлен', reply_markup=reply_markup_call_off('Главное меню').add(btn))
+        bot.register_next_step_handler(sent, get_chat_link, sent.message_id, params[2])
+
+
+def input_number(message, prev_message_id):
+    print(prev_message_id)
+    if message.text == 'Отмена':
         menu(message)
     else:
-        add_account(message, 'Номер введен некорректно\nВведите номер, например 79261234567')
-
-def input_code_combination(message, prev_message_id):
-    if message.text == 'Не приходит код, добавить другой акканут':
-        add_account(message, 'Добавление акканута, введите номер в формате 79161234567')
-    else:
-        time.sleep(0.2)
         bot.delete_message(chat_id=message.chat.id, message_id=prev_message_id)
-        time.sleep(0.2)
+        if db.account_exists(message.text):
+            btn = types.InlineKeyboardButton(text='Начать рассылку', callback_data='start')
+            sent = bot.send_message(message.chat.id, 'Аккаунт добавлен', reply_markup=reply_markup_call_off('Главное меню').add(btn))
+            bot.register_next_step_handler(sent, get_chat_link, sent.message_id, message.text)
 
-        sent = bot.send_message(message.chat.id, 'Аккаунт добавлен')
-        time.sleep(1)
-        bot.delete_message(chat_id=message.chat.id, message_id=sent.message_id)
+        else:
+            waiting_message = bot.send_message(message.chat.id, 'Немного подождите ...')
 
-        add_account(message, 'Добавьте еще аккаунты, введите номер в формате 79161234567')
+            Phone = message.text
+
+            data = Api_Data(Phone)
+
+            data.open_browser()
+            data.login(Phone)
+
+            bot.delete_message(chat_id=message.chat.id, message_id=waiting_message.message_id)
+            sent = bot.send_message(message.chat.id, 'Введите код, отправленный вам в Telegram', reply_markup=reply_markup_call_off('Не приходит код, добавить другой акканут'))
+            message_id = sent.message_id
+            bot.register_next_step_handler(sent, input_code_combination, message_id, data)
+
 
 
 def add_account(message, text):
     sent = bot.send_message(message.chat.id, text=text, reply_markup=reply_markup_call_off('Отмена'))
     message_id = sent.message_id
+    print(message_id)
     bot.register_next_step_handler(sent, input_number, message_id)
 
 
 def about(message):
-    sent = bot.send_message(message.chat.id, 'Информация о боте', reply_markup=inline_markup_back())
+    sent = bot.send_message(message.chat.id, 'Информация о боте', reply_markup=inline_markup_back('Назад'))
+
+
+def input_chat_link(message, prev_message_id, phone_number):
+    if message.text == 'Отмена':
+        menu(message)
+    else:
+        print(123456789)
+
+        bot.delete_message(chat_id=message.chat.id, message_id=prev_message_id)
+
+        chat_link = message.text
+
+        sent = bot.send_message(message.chat.id, 'Введите текст для рассылки')
+        bot.register_next_step_handler(sent, mailing_text, sent.message_id, phone_number, chat_link)
+
+
+def get_chat_link(message, prev_message_id, phone_number):
+    bot.delete_message(message.chat.id, prev_message_id)
+    sent = bot.send_message(message.chat.id, text='Ссылка на чат:', reply_markup=reply_markup_call_off('Отмена'))
+    message_id = sent.message_id
+    bot.register_next_step_handler(sent, input_chat_link, message_id, phone_number)
+
+
+def mailing_text(message, prev_message_id, phone_number, chat_link):
+    if message.text == 'Отмена':
+        menu(message)
+    else:
+        try:
+            set_event_loop(asyncio.new_event_loop())
+            machine = Script(session_name=str(phone_number),
+                             api_id=db.get_api_id(phone_number),
+                             api_hash=db.get_api_hash(phone_number),
+                             phone_number=phone_number,
+                             chat_link=str(chat_link),
+                             data=str(message.text))
+        except Exception as e:
+            print(e)
+            return
+
+        bot.delete_message(chat_id=message.chat.id, message_id=prev_message_id)
+
+        if machine.get_session() is False:
+            sent = bot.send_message(message.chat.id, 'Получаем сессию ...\n' +
+                                          'Введите код, отправленный вам в Telegram', reply_markup=reply_markup_call_off('Не приходит код, добавить другой акканут'))
+            machine.verify()
+            bot.register_next_step_handler(sent, get_code, sent.message_id, machine)
+        else:
+            machine.start()
+            bot.send_message(message.chat.id, 'Бот запущен', reply_markup=inline_markup_back('Главное меню'))
+
+def get_code(message, prev_message_id, machine):
+    if message.text == 'Не приходит код, добавить другой акканут':
+        add_account(message, 'Добавление акканута, введите номер в формате +79161234567')
+    else:
+        if machine.input_code(message.text) is True:
+            bot.send_message(message.chat.id, 'Бот запущен', reply_markup=inline_markup_back('Главное меню'))
+            machine.start()
+
 
 
 @bot.message_handler(commands=['menu'])
@@ -140,8 +221,6 @@ def start(message):
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    print(message)
-    print("\n\n\n")
     menu(message)
 
 
