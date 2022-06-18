@@ -115,8 +115,7 @@ class Script:
         members = []
 
         if type(chat) == Chat:
-            list_of_members = await self.app.get_chat_members(chat_id=chat.id, limit=150, filter=ChatMembersFilter.RECENT)
-            for i in list_of_members:
+            for i in self.app.get_chat_members(chat_id=chat.id, limit=150, filter=ChatMembersFilter.RECENT):
                 try:
                     members.append(i)
                 except Exception as e:

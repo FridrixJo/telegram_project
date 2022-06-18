@@ -28,6 +28,9 @@ class FSMWebScraper(StatesGroup):
     number = State()
     password = State()
     choice = State()
+    chat = State()
+    mailing_text = State()
+    telegram_code = State()
 
 
 db = AccountsDB('../data_bases/accounts.db')
@@ -40,6 +43,7 @@ bot = Bot(token='5583638970:AAE9RTGf3u3hzbvV9VkhwJfQSRXfQfuwRxw')
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
+GlobalMachineList = []
 
 
 async def menu(message: types.Message):
@@ -194,12 +198,9 @@ async def get_choice(message: types.Message, state: FSMContext):
         async with state.proxy() as file:
             phone = file['phone']
 
-        current_state = state.get_state()
-        if current_state is None:
-            return
-        await state.finish()
-
         await bot.send_message(message.chat.id, phone)
+        await bot.send_message(message.chat.id, 'Отправьте ссылку на чат', reply_markup=reply_markup_call_off('Отмена'))
+        await FSMWebScraper.chat.set()
     elif message.text == 'Добавить аккаунт':
         current_state = state.get_state()
         if current_state is None:
@@ -216,6 +217,62 @@ async def get_choice(message: types.Message, state: FSMContext):
     else:
         await bot.send_message(message.chat.id, 'Выберите одно из 3')
         await FSMWebScraper.choice.set()
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.chat)
+async def get_chat(message: types.Message, state: FSMContext):
+    async with state.proxy() as file:
+        file['chat'] = message.text
+        await bot.send_message(message.chat.id, file['chat'])
+    await bot.send_message(message.chat.id, 'Отправьте сообщение для рассылки')
+    await FSMWebScraper.mailing_text.set()
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.mailing_text)
+async def get_mailing_text(message: types.Message, state: FSMContext):
+    async with state.proxy() as file:
+        file['mailing_text'] = message.text
+        phone = file['phone']
+        machine = Script(session_name=phone,
+                         api_id=db.get_api_id(phone),
+                         api_hash=db.get_api_hash(phone),
+                         phone_number=phone,
+                         chat_link=file['chat'],
+                         data=file['mailing_text'])
+        await bot.send_message(message.chat.id, 'Отправляем код')
+        if await machine.verify():
+            hash_machine = ''.join(random.choice(string.digits + string.ascii_letters + string.printable) for _ in range(random.randrange(16, 32)))
+            user_id = str(message.chat.id)
+            dict = {'data': [hash_machine, machine, user_id]}
+
+            global GlobalMachineList
+            GlobalMachineList.append(dict)
+
+            file['hash_machine'] = hash_machine
+
+            await bot.send_message(message.chat.id , 'Введите код', reply_markup=reply_markup_call_off('Отмена'))
+            await FSMWebScraper.telegram_code.set()
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.telegram_code)
+async def get_telegram_code(message: types.Message, state: FSMContext):
+    wait = await bot.send_message(message.chat.id, 'Ожидайте')
+    async with state.proxy() as file:
+        file['code'] = message.text
+
+    async with state.proxy() as file:
+        code = file['code']
+        hash_machine = file['hash_machine']
+
+    global GlobalMachineList
+    actual_machine: Script
+
+    for i in GlobalMachineList:
+        if i['data'][0] == hash_machine:
+            actual_machine = i['data'][1]
+            await actual_machine.input_code(code)
+            await actual_machine.start()
+
 
 
 try:
