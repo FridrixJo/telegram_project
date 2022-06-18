@@ -51,12 +51,12 @@ def inline_markup_numbers(numbers: list):
     return kb
 
 
-def reply_markup_choice():
-    kb = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
+def inline_markup_choice():
+    kb = types.InlineKeyboardMarkup(row_width=1)
 
-    btn1 = types.KeyboardButton('Добавить аккаунт')
-    btn2 = types.KeyboardButton('Главное меню')
-    btn3 = types.KeyboardButton('Начать рассылку')
+    btn1 = types.InlineKeyboardButton('Добавить аккаунт', callback_data='add_account')
+    btn2 = types.InlineKeyboardButton('Главное меню', callback_data='main_menu')
+    btn3 = types.InlineKeyboardButton('Начать рассылку', callback_data='start_mailing')
 
     kb.add(btn1, btn2, btn3)
 

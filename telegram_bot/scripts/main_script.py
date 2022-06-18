@@ -91,17 +91,6 @@ class Script:
         else:
             return False, 'Код не отправляется в Telegram из-за ограничений вашего акканута, попробуйте позже'
 
-
-    async def get_session(self):
-        try:
-            print(self.app.export_session_string())
-            await self.app.start()
-            return True
-        except Exception as e:
-            print(e)
-            return False
-
-
     async def start(self):
 
         print(self.app)
@@ -115,7 +104,7 @@ class Script:
         members = []
 
         if type(chat) == Chat:
-            for i in self.app.get_chat_members(chat_id=chat.id, limit=150, filter=ChatMembersFilter.RECENT):
+            async for i in self.app.get_chat_members(chat_id=chat.id, limit=150, filter=ChatMembersFilter.RECENT):
                 try:
                     members.append(i)
                 except Exception as e:
@@ -130,19 +119,19 @@ class Script:
 
             try:
                 print(i.status)
-                print(self.app.get_chat_history_count(i.user.id))
+                print(await self.app.get_chat_history_count(i.user.id))
                 print(i.user.status)
             except Exception as e:
                 print(e)
                 continue
 
-            if i.status == ChatMemberStatus.MEMBER and i.user.is_contact == False and self.app.get_chat_history_count(i.user.id) == 0 and i.user.is_deleted == False and i.user.status != UserStatus.LONG_AGO and i.user.status != UserStatus.LAST_MONTH and i.user.status != UserStatus.LAST_WEEK:
+            if i.status == ChatMemberStatus.MEMBER and i.user.is_contact is False and await self.app.get_chat_history_count(i.user.id) == 0 and i.user.is_deleted is False and i.user.status != UserStatus.LONG_AGO and i.user.status != UserStatus.LAST_MONTH and i.user.status != UserStatus.LAST_WEEK:
                 try:
                     await self.app.send_message(i.user.id, self.data)
                     count += 1
                 except pyrogram.errors.exceptions.bad_request_400.PeerFlood as e:
                     try:
-                        await self.app.log_out()
+                        await self.app.disconnect()
                     except Exception as e:
                         print(e, 'log_out')
 
@@ -154,7 +143,7 @@ class Script:
         print(count)
 
         try:
-            await self.app.log_out()
+            await self.app.disconnect()
         except Exception as e:
             print(e, 'log_out')
         return count

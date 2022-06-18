@@ -197,7 +197,6 @@ def start_parsing(message):
     sent = bot.send_message(message.chat.id, "С этого момента вы будете получать объявления со старницы, по которой осуществлялся запрос", reply_markup=kb)
     bot.register_next_step_handler(sent, bot_params)
 
-
     x = threading.Thread(target=endless_parsing, args=(message,), daemon=True)
     x.start()
 
