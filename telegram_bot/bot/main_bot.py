@@ -4,7 +4,7 @@ import asyncio
 
 import telebot
 from telebot import types
-from data_bases.users import UsersDB
+from data_bases.db_users import UsersDB
 
 import time
 import datetime
@@ -12,7 +12,7 @@ import random
 import re
 
 from data_bases.db import AccountsDB
-from data_bases.users import UsersDB
+from data_bases.db_users import UsersDB
 
 from scripts.get_authorized import Api_Data
 from scripts.main_script import Script
@@ -320,7 +320,7 @@ def start(message):
     menu(message)
 
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(message: types.Message):
     menu(message)
 
 

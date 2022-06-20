@@ -8,7 +8,6 @@ class AccountsDB:
     def close(self):
         self.db.close()
 
-
     def add_phone_number(self, phone_number):
         try:
             self.sql.execute("INSERT INTO accounts (`phone_number`) VALUES (?)", (phone_number,))
@@ -16,6 +15,12 @@ class AccountsDB:
             print(e, "add_account")
         return self.db.commit()
 
+    def delete_phone_number(self, phone_number):
+        try:
+            self.sql.execute("DELETE FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            pass
+        return self.db.commit()
 
     def set_owner_id(self, phone_number, owner_id):
         try:
@@ -24,15 +29,12 @@ class AccountsDB:
             print(e, "set_owner_id")
         return self.db.commit()
 
-
     def get_numbers_by_owner_id(self, owner_id):
         try:
-            result = self.sql.execute("SELECT phone_number FROM accounts")
-                                      #WHERE owner_id = ?",(owner_id,)
+            result = self.sql.execute("SELECT phone_number FROM accounts WHERE owner_id = ?", (owner_id,))
         except Exception as e:
             print(e, "get_api_id")
         return result.fetchall()
-
 
     def account_exists(self, phone_number):
         try:

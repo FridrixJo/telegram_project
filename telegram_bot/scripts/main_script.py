@@ -16,6 +16,7 @@ import threading
 import asyncio
 from asyncio import set_event_loop, new_event_loop
 
+
 class Script:
     def __init__(self, session_name, api_id, api_hash, phone_number, chat_link, data):
         self.app = Client(name=session_name, api_id=api_id, api_hash=api_hash, phone_number=phone_number)
@@ -30,7 +31,6 @@ class Script:
 
     def change_data(self, data):
         self.data = data
-
 
     async def resend_code(self):
         try:
