@@ -54,6 +54,13 @@ class UsersDB:
             print(e, "name")
         return self.db.commit()
 
+    def get_name(self, user_id):
+        try:
+            result = self.sql.execute("SELECT name FROM users WHERE user_id = ?", (user_id,))
+            return result.fetchall()[0][0]
+        except Exception as e:
+            print(e, "get_name")
+
     def set_access(self, user_id, access):
         try:
             self.sql.execute("UPDATE `users` SET access = ? WHERE user_id = ?", (access, user_id))
@@ -88,3 +95,39 @@ class UsersDB:
         except Exception as e:
             print(e, "time")
         return self.db.commit()
+
+    def get_time(self, user_id):
+        try:
+            result = self.sql.execute("SELECT time FROM users WHERE user_id = ?", (user_id,))
+            return result.fetchall()[0][0]
+        except Exception as e:
+            print(e, "get_time")
+
+    def set_period(self, user_id, period):
+        try:
+            self.sql.execute("UPDATE `users` SET period = ? WHERE user_id = ?", (period, user_id))
+        except Exception as e:
+            print(e, "period")
+        return self.db.commit()
+
+    def get_period(self, user_id):
+        try:
+            result = self.sql.execute("SELECT period FROM users WHERE user_id = ?", (user_id,))
+            return result.fetchall()[0][0]
+        except Exception as e:
+            print(e, "get_period")
+
+    def increment_purchases(self, user_id):
+        try:
+            actual_purchases = self.get_purchases(user_id)
+            self.sql.execute("UPDATE `users` SET purchases = ? WHERE user_id = ?", (actual_purchases + 1, user_id))
+        except Exception as e:
+            print(e, "period")
+        return self.db.commit()
+
+    def get_purchases(self, user_id):
+        try:
+            result = self.sql.execute("SELECT purchases FROM users WHERE user_id = ?", (user_id,))
+            return result.fetchall()[0][0]
+        except Exception as e:
+            print(e, "get_purchases")

@@ -29,6 +29,13 @@ class AccountsDB:
             print(e, "set_owner_id")
         return self.db.commit()
 
+    def get_owner_id(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT owner_id FROM accounts WHERE phone_number = ?",(phone_number,))
+            return result.fetchall()[0][0]
+        except Exception as e:
+            print(e, "get_owner_id")
+
     def get_numbers_by_owner_id(self, owner_id):
         try:
             result = self.sql.execute("SELECT phone_number FROM accounts WHERE owner_id = ?", (owner_id,))
