@@ -75,11 +75,11 @@ def inline_markup_numbers(numbers: list):
 def inline_markup_choice():
     kb = types.InlineKeyboardMarkup(row_width=1)
 
-    btn1 = types.InlineKeyboardButton('Добавить аккаунт', callback_data='add_account')
-    btn2 = types.InlineKeyboardButton('Главное меню', callback_data='main_menu')
-    btn3 = types.InlineKeyboardButton('Начать рассылку', callback_data='start_mailing')
+    btn1 = types.InlineKeyboardButton('Начать рассылку ✅', callback_data='start_mailing')
+    btn2 = types.InlineKeyboardButton('Добавить аккаунт ➕', callback_data='add_account')
+    btn3 = types.InlineKeyboardButton('Главное меню 📱', callback_data='main_menu')
 
-    kb.add(btn3, btn1, btn2)
+    kb.add(btn1, btn2, btn3)
 
     return kb
 

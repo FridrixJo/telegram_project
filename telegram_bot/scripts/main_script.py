@@ -4,17 +4,12 @@ import pyrogram.errors.exceptions.bad_request_400
 from pyrogram import Client
 from pyrogram.enums import UserStatus, ChatMemberStatus, SentCodeType, ChatMembersFilter
 from pyrogram.types import SentCode
-from pyrogram.errors import SessionPasswordNeeded
 
 from pyrogram.types import Chat, ChatPreview
 
-import time
 import random
 
-import threading
-
 import asyncio
-from asyncio import set_event_loop, new_event_loop
 
 
 class Script:
@@ -24,13 +19,10 @@ class Script:
         self.chat_link = chat_link
         self.phone = phone_number
         self.send_code: SentCode
-        self.x = threading.Thread
+        self.members = []
 
-    def change_chat_link(self, chat_link):
-        self.chat_link = chat_link
-
-    def change_data(self, data):
-        self.data = data
+    def get_phone(self):
+        return self.phone
 
     async def resend_code(self):
         try:
@@ -42,7 +34,6 @@ class Script:
             return False, e
 
         return True, 'OK'
-
 
     async def verify(self):
         try:
@@ -61,24 +52,6 @@ class Script:
         if self.send_code.type == SentCodeType.APP:
             code = telegram_code
             try:
-                #set_event_loop(asyncio.new_event_loop())
-                #loop = asyncio.get_event_loop()
-                #future = asyncio.ensure_future(self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(code)), loop=loop)
-                #loop.run_until_complete(future)
-                #time.sleep(3)
-                #x = threading.Thread(target=self.app.sign_in, args=(self.phone, str(self.send_code.phone_code_hash), str(code),), daemon=True)
-                #x.start()
-                #x.join()
-
-                #set_event_loop(asyncio.new_event_loop())
-                #loop = asyncio.get_event_loop()
-
-                #future = asyncio.ensure_future(coro_or_future=self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(code)), loop=loop)
-                #loop.run_until_complete(future=future)
-
-                #task = asyncio.create_task(coro=self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(code)), name='qwerty')
-                #await task
-
                 await self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(code))
 
                 return True, 'OK'
@@ -91,7 +64,7 @@ class Script:
         else:
             return False, 'Код не отправляется в Telegram из-за ограничений вашего акканута, попробуйте позже'
 
-    async def start(self):
+    async def get_chat_members(self):
 
         print(self.app)
 
@@ -99,54 +72,50 @@ class Script:
             chat = await self.app.get_chat(self.chat_link)
         except Exception as e:
             print(e, "getting chat")
-            return
+            return False, e
 
-        members = []
+        self.members = []
 
-        if type(chat) == Chat:
+        if type(chat) == pyrogram.types.Chat:
             async for i in self.app.get_chat_members(chat_id=chat.id, limit=150, filter=ChatMembersFilter.RECENT):
                 try:
-                    members.append(i)
+                    self.members.append(i)
                 except Exception as e:
                     print(e, "adding members to list from chat")
-            print(len(members))
+            print(len(self.members))
         else:
-            return 0
+            return False, 'private chat'
 
+        return True, 'OK'
+
+    async def write(self):
         count = 0
-        for i in members:
-            await asyncio.sleep(random.randrange(2,3))
-
-            try:
-                print(i.status)
-                print(await self.app.get_chat_history_count(i.user.id))
-                print(i.user.status)
-            except Exception as e:
-                print(e)
-                continue
-
+        for i in self.members:
+            await asyncio.sleep(random.randrange(2, 3))
             if i.status == ChatMemberStatus.MEMBER and i.user.is_contact is False and await self.app.get_chat_history_count(i.user.id) == 0 and i.user.is_deleted is False and i.user.status != UserStatus.LONG_AGO and i.user.status != UserStatus.LAST_MONTH and i.user.status != UserStatus.LAST_WEEK:
                 try:
                     await self.app.send_message(i.user.id, self.data)
+                    print('count', self.phone)
                     count += 1
                 except pyrogram.errors.exceptions.bad_request_400.PeerFlood as e:
                     try:
                         await self.app.disconnect()
                     except Exception as e:
-                        print(e, 'log_out')
+                        print(e)
 
-                    print('qwertyuiop')
-                    return count
+                    print('account got spam')
+                    return count, 'LIMITED'
+
                 except Exception as e:
                     print(e, "sending message to members from chat")
                     print(type(e))
-        print(count)
 
         try:
             await self.app.disconnect()
         except Exception as e:
-            print(e, 'log_out')
-        return count
+            print(e)
+
+        return count, 'ALL_PEOPLE_PASSED'
 
 
 
