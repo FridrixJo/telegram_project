@@ -554,12 +554,11 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.telegram_code)
 async def get_telegram_code(message: types.Message, state: FSMContext):
+    global GlobalMachineList
     if message.text == 'Не приходит код, добавить другой аккаунт' or message.text == 'Главное меню':
         await clear_state(state)
-
         if machine_db.user_exists(message.chat.id):
             machine_db.delete_user(message.chat.id)
-            global GlobalMachineList
             hash_machine = machine_db.get_hash(message.chat.id)
             for i in GlobalMachineList:
                 if i['data'][0] == hash_machine:
@@ -579,7 +578,6 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
             code = file['code']
             hash_machine = file['hash_machine']
 
-        global GlobalMachineList
         actual_machine: Script
 
         for i in GlobalMachineList:
@@ -590,11 +588,12 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                 if params[0]:
                     chat_params = await actual_machine.get_chat_members()
                     if chat_params[0]:
+                        await clear_state(state)
                         await bot.send_message(message.chat.id, 'Бот успешно запущен ✅', reply_markup=inline_markup_back('На главное меню'))
                         writting_params = await actual_machine.write()
-                        #await bot.send_message(message.chat.id, f'Бот написал {actual_machine.get}')
-                        if writting_params[1] == 'LIMITED':
-
+                        text = f'<i>🤖 Бот завершил работу\n на аккаунте</i> <b><a>{actual_machine.get_phone()}</a></b>' + '\n'
+                        text += f'<i>📤 Количество отправленных\n сообщений:</i> <b>{writting_params[0]}</b>'
+                        await bot.send_message(message.chat.id, text, parse_mode='HTML')
                     else:
                         await clear_state(state)
                         await bot.send_message(message.chat.id, 'Ошибка: ' + str(chat_params[1]), reply_markup=inline_markup_back('На главное меню'))
