@@ -315,6 +315,7 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
 @dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=FSMAdmin.user)
 async def cancel_input_user_id(message: types.Message, state: FSMContext):
     await clear_state(state)
+    await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
     await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
     await FSMAdmin.admin_opportunities.set()
 
