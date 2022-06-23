@@ -382,15 +382,17 @@ async def cancel_handler(message: types.Message, state: FSMContext):
             if i['data'][0] == hash:
                 GlobalList.remove(i)
     await clear_state(state)
-    await message.reply('OKS')
+    await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
     await send_menu(message)
 
 
 @dispatcher.message_handler(Text(equals='назад', ignore_case=True), state=[FSMWebScraper.chat, FSMWebScraper.mailing_text, FSMWebScraper.telegram_code])
 async def cancel_handler(message: types.Message, state: FSMContext):
-    await message.reply('OKS')
-    await bot.send_message(message.chat.id, 'Выберите одно из 3', reply_markup=inline_markup_choice())
-    await FSMWebScraper.choice.set()
+    await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
+    async with state.proxy() as file:
+        phone = file['phone']
+    await bot.send_message(chat_id=message.chat.id, text=f'<i>Аккаунт с номером</i> <code>{phone}</code>📱', reply_markup=inline_markup_opportunities(), parse_mode='HTML')
+    await FSMWebScraper.opportunities.set()
 
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.number)
@@ -491,18 +493,18 @@ async def get_choice(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'start_mailing':
         async with state.proxy() as file:
             phone = file['phone']
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Отправьте ссылку на чат 💬', reply_markup=reply_markup_call_off('Назад'))
         await bot.send_message(call.message.chat.id, phone)
-        await bot.send_message(call.message.chat.id, 'Отправьте ссылку на чат 💬', reply_markup=reply_markup_call_off('Назад'))
         await FSMWebScraper.chat.set()
     elif call.data == 'add_account':
         await clear_state(state)
-        await bot.send_message(call.message.chat.id, 'Введи номер', reply_markup=reply_markup_call_off('Отмена'))
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Введи номер', reply_markup=reply_markup_call_off('Отмена'))
         await FSMWebScraper.number.set()
     elif call.data == 'main_menu':
         await clear_state(state)
         await edit_to_menu(call.message)
     else:
-        await bot.send_message(call.message.chat.id, 'Выберите одно из 3')
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Выберите одно из 3', reply_markup=inline_markup_choice(), parse_mode='HTML')
         await FSMWebScraper.choice.set()
 
 
@@ -570,7 +572,7 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
         else:
             await send_menu(message)
     else:
-        wait = await bot.send_message(message.chat.id, 'Ожидайте')
+        wait = await bot.send_message(message.chat.id, 'Ожидайте', reply_markup=types.ReplyKeyboardRemove())
         async with state.proxy() as file:
             file['code'] = message.text
 
@@ -584,11 +586,11 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
             if i['data'][0] == hash_machine:
                 actual_machine = i['data'][1]
                 params = await actual_machine.input_code(code)
-                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                 if params[0]:
                     chat_params = await actual_machine.get_chat_members()
                     if chat_params[0]:
                         await clear_state(state)
+                        await bot.delete_message(chat_id=message.chat.id, message_id=wait.message_id)
                         await bot.send_message(message.chat.id, 'Бот успешно запущен ✅', reply_markup=inline_markup_back('На главное меню'))
                         writting_params = await actual_machine.write()
                         text = f'<i>🤖 Бот завершил работу\n на аккаунте</i> <b><a>{actual_machine.get_phone()}</a></b>' + '\n'
