@@ -241,7 +241,12 @@ async def get_statistics(call):
     for i in conditons:
         if i[0] == 1:
             count += 1
-    text += f'Active accounts quantity: <b>{count}</b>'
+    text += f'Active accounts quantity: <b>{count}</b>' + '\n'
+    messages = db.get_all_message_count()
+    all_message_cout = 0
+    for i in messages:
+        all_message_cout += i[0]
+    text += f'All sent messages quantity: <b>{all_message_cout}</b>'
     await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_admin_back('Назад', 'admin_back'), parse_mode='HTML')
 
 
@@ -307,7 +312,7 @@ async def get_user_list_numbers(call: types.CallbackQuery, state: FSMContext):
         user_id = file['user_id']
     numbers = db.get_numbers_by_owner_id(user_id)
     btn = types.InlineKeyboardButton(text='Back ↩️', callback_data='admin_back_list')
-    await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'UserID: <a><b>{user_id}</b></a>\nList numbers quantity: {len(numbers)}', reply_markup=inline_markup_numbers(numbers).add(btn), parse_mode='HTML')
+    await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'UserID: <a><b>{user_id}</b></a>\nList numbers quantity: {len(numbers)}', reply_markup=inline_markup_numbers(numbers, db).add(btn), parse_mode='HTML')
 
 
 @dispatcher.callback_query_handler(state=FSMAdmin.choose_phone)
@@ -320,12 +325,14 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
             user_id = file['user_id']
         for i in db.get_numbers_by_owner_id(user_id):
             if str(i[0]) == call.data:
-                response = f'number: {call.data}' + '\n'
-                response += f'api_id: {db.get_api_id(call.data)}' + '\n'
-                response += f'api_hash: {db.get_api_hash(call.data)}' + '\n'
-                response += f'owner_id: {db.get_owner_id(call.data)}'
+                response = f'number: <b>{call.data}</b>' + '\n'
+                response += f'api_id: <b>{db.get_api_id(call.data)}</b>' + '\n'
+                response += f'api_hash: <b>{db.get_api_hash(call.data)}</b>' + '\n'
+                response += f'owner_id: <b>{db.get_owner_id(call.data)}</b>' + '\n'
+                response += f'name: <b>{db.get_name(call.data)}</b>' + '\n'
+                response += f'send messages quantity: <b>{db.get_message_count(call.data)}</b>'
 
-                await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=response, reply_markup=inline_markup_admin_back('Back', 'admin_back_list'))
+                await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=response, reply_markup=inline_markup_admin_back('Back', 'admin_back_list'), parse_mode='HTML')
                 await FSMAdmin.phone_info_back.set()
 
 
@@ -509,27 +516,31 @@ async def get_password(message: types.Message, state: FSMContext):
                     db.set_owner_id(Phone, message.chat.id)
 
                     await bot.delete_message(message.chat.id, wait.message_id)
+                    await bot.send_message(message.chat.id, 'Принято', reply_markup=types.ReplyKeyboardRemove())
                     await bot.send_message(message.chat.id, '<i>Аккаунт успешно добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
                     await FSMWebScraper.choice.set()
 
 
 @dispatcher.callback_query_handler(state=FSMWebScraper.choice)
 async def get_choice(call: types.CallbackQuery, state: FSMContext):
+    print('AAAAAAAAAAAAAAAAa')
+    await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
     if call.data == 'start_mailing':
+        print('AAAAAAAAAAAAAAAAa')
         async with state.proxy() as file:
             phone = file['phone']
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Отправьте ссылку на чат 💬', reply_markup=reply_markup_call_off('Назад'))
+        await bot.send_message(chat_id=call.message.chat.id, text='Отправьте ссылку на чат 💬', reply_markup=reply_markup_call_off('Назад'))
         await bot.send_message(call.message.chat.id, phone)
         await FSMWebScraper.chat.set()
     elif call.data == 'add_account':
         await clear_state(state)
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Введи номер', reply_markup=reply_markup_call_off('Отмена'))
+        await bot.send_message(chat_id=call.message.chat.id, text='Введи номер', reply_markup=reply_markup_call_off('Отмена'))
         await FSMWebScraper.number.set()
     elif call.data == 'main_menu':
         await clear_state(state)
-        await edit_to_menu(call.message)
+        await send_menu(call.message)
     else:
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Выберите одно из 3', reply_markup=inline_markup_choice(), parse_mode='HTML')
+        await bot.send_message(chat_id=call.message.chat.id, text='Выберите одно из 3', reply_markup=inline_markup_choice(), parse_mode='HTML')
         await FSMWebScraper.choice.set()
 
 
@@ -619,7 +630,10 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                         await clear_state(state)
                         await bot.delete_message(chat_id=message.chat.id, message_id=wait.message_id)
                         await bot.send_message(message.chat.id, 'Бот успешно запущен ✅', reply_markup=inline_markup_back('На главное меню'))
+                        message_count = db.get_message_count(actual_machine.get_phone())
                         writting_params = await actual_machine.write()
+                        message_count += writting_params[0]
+                        db.set_message_count(actual_machine.get_phone(), message_count)
                         text = f'<i>🤖 Бот завершил работу\n на аккаунте</i> <b><a>{actual_machine.get_phone()}</a></b>' + '\n'
                         text += f'<i>📤 Количество отправленных\n сообщений:</i> <b>{writting_params[0]}</b>'
                         db.set_condition(actual_machine.get_phone(), False)

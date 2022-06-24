@@ -141,3 +141,26 @@ class AccountsDB:
         except Exception as e:
             print(e, "get_name")
         return result.fetchall()[0][0]
+
+    def set_message_count(self, phone_number, message_count):
+        try:
+            self.sql.execute("UPDATE accounts SET message_count = ? WHERE phone_number = ?", (message_count, phone_number,))
+        except Exception as e:
+            print(e, "set_message_count")
+        return self.db.commit()
+
+    def get_message_count(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT message_count FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_message_count")
+        return result.fetchall()[0][0]
+
+    def get_all_message_count(self):
+        try:
+            result = self.sql.execute("SELECT message_count FROM accounts")
+        except Exception as e:
+            print(e, "get_all_message_count")
+        return result.fetchall()
+
+
