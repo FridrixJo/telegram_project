@@ -24,6 +24,19 @@ class Script:
     def get_phone(self):
         return self.phone
 
+    async def get_account_name(self):
+        user: pyrogram.types.User
+        user = await self.app.get_me()
+        text = ''
+        first_name = user.first_name
+        last_name = user.last_name
+        if first_name is not None:
+            text += first_name + ' '
+        if last_name is not None:
+            text += last_name
+
+        return text
+
     async def resend_code(self):
         try:
             phone_code_hash = self.send_code.phone_code_hash

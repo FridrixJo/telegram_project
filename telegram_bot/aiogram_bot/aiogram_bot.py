@@ -46,6 +46,7 @@ class FSMAdmin(StatesGroup):
     cancel = State()
     user = State()
     days = State()
+    statistics = State()
 
 
 db = AccountsDB('../data_bases/accounts.db')
@@ -71,6 +72,7 @@ async def start(call: types.CallbackQuery):
         await FSMWebScraper.number.set()
     elif call.data == 'added_accounts':
         await get_list_numbers(call)
+        await FSMWebScraper.ListNumbers.set()
     elif call.data == 'about':
         await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text='это мой бот нахуй', reply_markup=inline_markup_back('Назад'))
     elif call.data == 'profile':
@@ -102,8 +104,7 @@ async def get_list_numbers(call: types.CallbackQuery):
     text = '<i>Список всех добавленных аккаунтов</i>' + '\n' + f'<i>Количество акканутов</i>: <b>{len(numbers)}</b>'
     if len(numbers):
         text += '\n' + '<i>Для использование аккаунта нажмите на него</i>👇'
-    await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_numbers(numbers).add(btn), parse_mode='HTML')
-    await FSMWebScraper.ListNumbers.set()
+    await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_numbers(numbers, db).add(btn), parse_mode='HTML')
 
 
 @dispatcher.callback_query_handler(state=FSMWebScraper.ListNumbers)
@@ -226,6 +227,29 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
     elif call.data == 'main_menu':
         await clear_state(state)
         await edit_to_menu(call.message)
+    elif call.data == 'statistics':
+        await clear_state(state)
+        await get_statistics(call)
+        await FSMAdmin.statistics.set()
+
+
+async def get_statistics(call):
+    text = f'Users quantity: <b>{len(users_db.get_users())}</b>' + '\n'
+    text += f'Numbers quantity: <b>{len(db.get_all_numbers())}</b>' + '\n'
+    conditons = db.get_all_conditions()
+    count = 0
+    for i in conditons:
+        if i[0] == 1:
+            count += 1
+    text += f'Active accounts quantity: <b>{count}</b>'
+    await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_admin_back('Назад', 'admin_back'), parse_mode='HTML')
+
+
+@dispatcher.callback_query_handler(state=FSMAdmin.statistics)
+async def start(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'admin_back':
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+        await FSMAdmin.admin_opportunities.set()
 
 
 # FUNCTIONS AND DECORATORS FOR ALL_USERS
@@ -590,12 +614,15 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                 if params[0]:
                     chat_params = await actual_machine.get_chat_members()
                     if chat_params[0]:
+                        db.set_condition(actual_machine.get_phone(), True)
+                        db.set_name(actual_machine.get_phone(), await actual_machine.get_account_name())
                         await clear_state(state)
                         await bot.delete_message(chat_id=message.chat.id, message_id=wait.message_id)
                         await bot.send_message(message.chat.id, 'Бот успешно запущен ✅', reply_markup=inline_markup_back('На главное меню'))
                         writting_params = await actual_machine.write()
                         text = f'<i>🤖 Бот завершил работу\n на аккаунте</i> <b><a>{actual_machine.get_phone()}</a></b>' + '\n'
                         text += f'<i>📤 Количество отправленных\n сообщений:</i> <b>{writting_params[0]}</b>'
+                        db.set_condition(actual_machine.get_phone(), False)
                         await bot.send_message(message.chat.id, text, parse_mode='HTML')
                     else:
                         await clear_state(state)

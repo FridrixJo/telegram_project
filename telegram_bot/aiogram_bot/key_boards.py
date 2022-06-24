@@ -1,4 +1,5 @@
 from aiogram import types
+from data_bases.db import AccountsDB
 
 
 def inline_markup_menu():
@@ -63,10 +64,14 @@ def reply_markup_call_off(text):
     return kb
 
 
-def inline_markup_numbers(numbers: list):
+def inline_markup_numbers(numbers: list, db: AccountsDB):
     kb = types.InlineKeyboardMarkup(row_width=1)
     for i in numbers:
-        btn = types.InlineKeyboardButton(text=str(i[0]), callback_data=str(i[0]))
+        text = i[0] + ' '
+        name = db.get_name(i[0])
+        if name is not None:
+            text += name
+        btn = types.InlineKeyboardButton(text=str(text), callback_data=str(i[0]))
         kb.add(btn)
 
     return kb
@@ -114,8 +119,9 @@ def inline_markup_admin():
     btn2 = types.InlineKeyboardButton('Take back access ❌', callback_data='take_back_access')
     btn3 = types.InlineKeyboardButton('All users', callback_data='all_users')
     btn4 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+    btn5 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
 
-    kb.add(btn1, btn2, btn3, btn4)
+    kb.add(btn1, btn2, btn3, btn4, btn5)
 
     return kb
 

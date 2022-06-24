@@ -43,6 +43,13 @@ class AccountsDB:
             print(e, "get_api_id")
         return result.fetchall()
 
+    def get_all_numbers(self):
+        try:
+            result = self.sql.execute("SELECT phone_number FROM accounts")
+        except Exception as e:
+            print(e, "get_all_numbers")
+        return result.fetchall()
+
     def account_exists(self, phone_number):
         try:
             result = self.sql.execute("SELECT id FROM accounts WHERE phone_number = ?",(phone_number,))
@@ -99,3 +106,38 @@ class AccountsDB:
             return result.fetchall()
         except Exception as s:
             print(type(s))
+
+    def set_condition(self, phone_number, condition):
+        try:
+            self.sql.execute("UPDATE accounts SET condition = ? WHERE phone_number = ?", (condition, phone_number,))
+        except Exception as e:
+            print(e, "set_condition")
+        return self.db.commit()
+
+    def get_condition(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT condition FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_condition")
+        return result.fetchall()[0][0]
+
+    def get_all_conditions(self):
+        try:
+            result = self.sql.execute("SELECT condition FROM accounts")
+        except Exception as e:
+            print(e, "get_all_conditions")
+        return result.fetchall()
+
+    def set_name(self, phone_number, name):
+        try:
+            self.sql.execute("UPDATE accounts SET name = ? WHERE phone_number = ?", (name, phone_number,))
+        except Exception as e:
+            print(e, "set_name")
+        return self.db.commit()
+
+    def get_name(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT name FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_name")
+        return result.fetchall()[0][0]
