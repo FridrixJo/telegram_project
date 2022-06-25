@@ -118,8 +118,8 @@ def inline_markup_admin():
     btn1 = types.InlineKeyboardButton('Give access ✅', callback_data='give_access')
     btn2 = types.InlineKeyboardButton('Take back access ❌', callback_data='take_back_access')
     btn3 = types.InlineKeyboardButton('All users', callback_data='all_users')
-    btn4 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
-    btn5 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
+    btn4 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
+    btn5 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
 
     kb.add(btn1, btn2, btn3, btn4, btn5)
 

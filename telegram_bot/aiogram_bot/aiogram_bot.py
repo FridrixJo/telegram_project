@@ -68,11 +68,20 @@ async def start(call: types.CallbackQuery):
     if call.data == 'back':
         await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text='Главное меню', reply_markup=inline_markup_menu())
     elif call.data == 'add_account':
-        await bot.send_message(call.message.chat.id, 'Введи номер', reply_markup=reply_markup_call_off('Отмена'))
-        await FSMWebScraper.number.set()
+        if users_db.get_access(call.message.chat.id) == 'using':
+            await bot.send_message(call.message.chat.id, 'Введи номер', reply_markup=reply_markup_call_off('Отмена'))
+            await FSMWebScraper.number.set()
+        else:
+            text = '<i>Вы не имеет доступ к боту ⛔️\nДля получения доступа напишите админу</i> <b>@denis_mscw</b> 👨‍💻'
+            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_back('Назад'), parse_mode='HTML')
+
     elif call.data == 'added_accounts':
-        await get_list_numbers(call)
-        await FSMWebScraper.ListNumbers.set()
+        if users_db.get_access(call.message.chat.id) == 'using':
+            await get_list_numbers(call)
+            await FSMWebScraper.ListNumbers.set()
+        else:
+            text = '<i>Вы не имеет доступ к боту ⛔️\nДля получения доступа напишите админу</i> <b>@denis_mscw</b> 👨‍💻'
+            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_back('Назад'), parse_mode='HTML')
     elif call.data == 'about':
         await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text='это мой бот нахуй', reply_markup=inline_markup_back('Назад'))
     elif call.data == 'profile':
@@ -80,7 +89,7 @@ async def start(call: types.CallbackQuery):
 
 
 async def my_profile(call: types.CallbackQuery):
-    text = f'💬Ваш ChatID: <b><a>{call.message.chat.id}</a></b>' + '\n'
+    text = f'💬Ваш ChatID: <b><code>{call.message.chat.id}</code></b>' + '\n'
     login = 'none ⛔️'
     if call.from_user.username is not None:
         login = '@' + call.from_user.username
@@ -88,7 +97,7 @@ async def my_profile(call: types.CallbackQuery):
         response = users_db.get_access(call.message.chat.id)
         access = 'Ваш доступ'
         if response == 'start':
-            access = '<i>🙅‍♂️Вы не имеете доступа к боту, чтобы получить доступ, напиши админу</i> @denis_mscw'
+            access = '<i>🙅‍♂️Вы не имеете доступа к боту, чтобы получить доступ, напишите админу</i> <b>@denis_mscw</b> 👨‍💻'
         elif response == 'using':
             seconds = users_db.get_seconds(call.message.chat.id)
             period = users_db.get_period(call.message.chat.id) * 24 * 3600
@@ -127,9 +136,13 @@ async def start(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'start_mailing':
         async with state.proxy() as file:
             phone = file['phone']
-        await bot.send_message(call.message.chat.id, phone)
-        await bot.send_message(call.message.chat.id, 'Отправьте ссылку на чат', reply_markup=reply_markup_call_off('Назад'))
-        await FSMWebScraper.chat.set()
+        if db.get_condition(phone) == 0:
+            await bot.send_message(call.message.chat.id, phone)
+            await bot.send_message(call.message.chat.id, 'Отправьте ссылку на чат', reply_markup=reply_markup_call_off('Назад'))
+            await FSMWebScraper.chat.set()
+        else:
+            await clear_state(state)
+            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Бот уже запущен на этом аккаунте, выберите другой', reply_markup=inline_markup_back('Главное меню'))
     elif call.data == 'delete_account':
         text = '<i>Вы уверены что хотите удалить данный аккаунт с вашего списка?' + '\n' + 'После удаления вам придется заново пройти процедуру добавления акканута, если вы захотите опять его добавить в ваш список</i>'
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_yes_no() ,parse_mode='HTML')
@@ -137,6 +150,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
     elif call.data == 'back_opportunities':
         await clear_state(state)
         await get_list_numbers(call)
+        await FSMWebScraper.ListNumbers.set()
 
 
 @dispatcher.callback_query_handler(state=FSMWebScraper.last_chance)
@@ -200,8 +214,9 @@ async def start_menu(message: types.Message):
 
 
 @dispatcher.message_handler(commands=['moderator'], state=['*'])
-async def start_moderator(message: types.Message):
-    if message.chat.id == 628860511:
+async def start_moderator(message: types.Message, state: FSMContext):
+    await clear_state(state)
+    if message.chat.id == 628860511 or message.chat.id == 899951880:
         await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
         await FSMAdmin.admin_opportunities.set()
 
@@ -268,7 +283,7 @@ async def get_list_users(call: types.CallbackQuery):
         user.append(str(users_db.get_name(i[0])))
         users.append(user)
 
-    btn = types.InlineKeyboardButton('Назад ↩️', callback_data='admin_back')
+    btn = types.InlineKeyboardButton('Back ↩️', callback_data='admin_back')
     await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='List of all users', reply_markup=inline_markup_users(users).add(btn))
 
 
@@ -353,12 +368,13 @@ async def cancel_input_user_id(message: types.Message, state: FSMContext):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.user)
 async def get_user_id(message: types.Message, state: FSMContext):
+    await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
     if users_db.user_exists(message.text):
         async with state.proxy() as file:
             access = file['access']
             file['user_id'] = message.text
         if access == 'give':
-            await bot.send_message(message.chat.id, 'For how many days?')
+            await bot.send_message(message.chat.id, 'For how many days?', reply_markup=reply_markup_call_off('Cancel'))
             await FSMAdmin.days.set()
         elif access == 'take_back':
             users_db.set_access(message.text, 'start')
@@ -368,12 +384,13 @@ async def get_user_id(message: types.Message, state: FSMContext):
             await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{message.text}</b></a> was restricted', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
             await FSMAdmin.cancel.set()
     else:
-        await bot.send_message(message.chat.id, 'There is no such user', reply_markup=inline_markup_admin_back('Back'))
+        await bot.send_message(message.chat.id, 'There is no such user', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
         await FSMAdmin.cancel.set()
 
 
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.days)
 async def get_days(message: types.Message, state: FSMContext):
+    await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
     if message.text.isdigit() and int(message.text) > 0:
         async with state.proxy() as file:
             user_id = file['user_id']
@@ -429,7 +446,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.number)
 async def get_number(message: types.Message, state: FSMContext):
-    wait = await bot.send_message(message.chat.id, 'Ожидайте')
+    wait = await bot.send_message(message.chat.id, 'Ожидайте', reply_markup=types.ReplyKeyboardRemove())
     if '+' in message.text:
 
         async with state.proxy() as file:
@@ -440,7 +457,7 @@ async def get_number(message: types.Message, state: FSMContext):
 
         if db.account_exists(Phone):
             await bot.delete_message(message.chat.id, wait.message_id)
-            await bot.send_message(message.chat.id, 'Аккаунт уже добавлен', reply_markup=inline_markup_choice())
+            await bot.send_message(message.chat.id, '<i>Аккаунт уже добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
             await FSMWebScraper.choice.set()
         else:
             scraper = Api_Data(Phone)
@@ -478,7 +495,7 @@ async def get_number(message: types.Message, state: FSMContext):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.password)
 async def get_password(message: types.Message, state: FSMContext):
-    wait = await bot.send_message(message.chat.id, 'Ожидайте')
+    wait = await bot.send_message(message.chat.id, 'Ожидайте', reply_markup=types.ReplyKeyboardRemove())
     async with state.proxy() as file:
         file['password'] = message.text
 
@@ -492,6 +509,8 @@ async def get_password(message: types.Message, state: FSMContext):
     for i in GlobalList:
         if i['data'][0] == hash:
             actual_browser = i['data'][1]
+            web_scraper_db.delete_user(message.chat.id)
+            GlobalList.remove(i)
             params = await actual_browser.input_password(password)
             if not params[0]:
                 await actual_browser.remove_error()
@@ -500,9 +519,6 @@ async def get_password(message: types.Message, state: FSMContext):
                 await FSMWebScraper.password.set()
             else:
                 api = await actual_browser.getting_data()
-
-                web_scraper_db.delete_user(message.chat.id)
-                GlobalList.remove(i)
 
                 if not api[3]:
                     await bot.delete_message(message.chat.id, wait.message_id)
@@ -516,22 +532,24 @@ async def get_password(message: types.Message, state: FSMContext):
                     db.set_owner_id(Phone, message.chat.id)
 
                     await bot.delete_message(message.chat.id, wait.message_id)
-                    await bot.send_message(message.chat.id, 'Принято', reply_markup=types.ReplyKeyboardRemove())
                     await bot.send_message(message.chat.id, '<i>Аккаунт успешно добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
                     await FSMWebScraper.choice.set()
 
 
 @dispatcher.callback_query_handler(state=FSMWebScraper.choice)
 async def get_choice(call: types.CallbackQuery, state: FSMContext):
-    print('AAAAAAAAAAAAAAAAa')
     await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
     if call.data == 'start_mailing':
-        print('AAAAAAAAAAAAAAAAa')
         async with state.proxy() as file:
             phone = file['phone']
-        await bot.send_message(chat_id=call.message.chat.id, text='Отправьте ссылку на чат 💬', reply_markup=reply_markup_call_off('Назад'))
-        await bot.send_message(call.message.chat.id, phone)
-        await FSMWebScraper.chat.set()
+        if db.get_condition(phone) == 0:
+            await bot.send_message(call.message.chat.id, phone)
+            await bot.send_message(call.message.chat.id, 'Отправьте ссылку на чат', reply_markup=reply_markup_call_off('Назад'))
+            await FSMWebScraper.chat.set()
+        else:
+            await clear_state(state)
+            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Бот уже запущен на этом аккаунте, выберите другой', reply_markup=inline_markup_back('Главное меню'))
+
     elif call.data == 'add_account':
         await clear_state(state)
         await bot.send_message(chat_id=call.message.chat.id, text='Введи номер', reply_markup=reply_markup_call_off('Отмена'))
@@ -549,12 +567,14 @@ async def get_chat(message: types.Message, state: FSMContext):
     async with state.proxy() as file:
         file['chat'] = message.text
         await bot.send_message(message.chat.id, file['chat'])
+    await bot.send_message(message.chat.id, 'Принято', reply_markup=types.ReplyKeyboardRemove())
     await bot.send_message(message.chat.id, 'Отправьте сообщение для рассылки 📩', reply_markup=reply_markup_call_off('Назад'))
     await FSMWebScraper.mailing_text.set()
 
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.mailing_text)
 async def get_mailing_text(message: types.Message, state: FSMContext):
+    await bot.send_message(message.chat.id, 'Принято', reply_markup=types.ReplyKeyboardRemove())
     async with state.proxy() as file:
         file['mailing_text'] = message.text
         phone = file['phone']
@@ -594,10 +614,11 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
 async def get_telegram_code(message: types.Message, state: FSMContext):
     global GlobalMachineList
     if message.text == 'Не приходит код, добавить другой аккаунт' or message.text == 'Главное меню':
+        await bot.send_message(message.chat.id, 'ОKS', reply_markup=types.ReplyKeyboardRemove())
         await clear_state(state)
         if machine_db.user_exists(message.chat.id):
-            machine_db.delete_user(message.chat.id)
             hash_machine = machine_db.get_hash(message.chat.id)
+            machine_db.delete_user(message.chat.id)
             for i in GlobalMachineList:
                 if i['data'][0] == hash_machine:
                     GlobalMachineList.remove(i)
@@ -621,6 +642,9 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
         for i in GlobalMachineList:
             if i['data'][0] == hash_machine:
                 actual_machine = i['data'][1]
+                GlobalMachineList.remove(i)
+                if machine_db.user_exists(message.chat.id):
+                    machine_db.delete_user(message.chat.id)
                 params = await actual_machine.input_code(code)
                 if params[0]:
                     chat_params = await actual_machine.get_chat_members()

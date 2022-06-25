@@ -70,6 +70,7 @@ class Api_Data:
     async def input_password(self, telegram_password):
         try:
             password = self.browser.find_element(By.ID, 'my_password')
+            password.clear()
             password.send_keys(telegram_password)
         except Exception as e:
             print(e, 'inserting_password error')
