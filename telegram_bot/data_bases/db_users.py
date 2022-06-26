@@ -30,6 +30,13 @@ class UsersDB:
         except Exception as s:
             print(type(s))
 
+    def get_users_by_access(self, access):
+        try:
+            result = self.sql.execute("SELECT `user_id` FROM `users` WHERE access = ?", (access,))
+            return result.fetchall()
+        except Exception as s:
+            print(type(s))
+
     def delete_user(self, user_id):
         try:
             self.sql.execute("DELETE FROM users WHERE user_id = ?", (user_id,))

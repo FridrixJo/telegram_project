@@ -14,6 +14,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import time
 import random
 
+
 class Api_Data:
     def __init__(self, phone_number):
         self.main_link = "https://my.telegram.org/auth"
@@ -21,10 +22,8 @@ class Api_Data:
         self.phone_number = phone_number
         self.browser = webdriver.Chrome(executable_path='../driver/chromedriver.exe')
 
-
     def browser_state(self):
         return self.phone_number
-
 
     async def login(self):
         try:
@@ -65,7 +64,6 @@ class Api_Data:
             print(e)
 
         return True, 'OK'
-
 
     async def input_password(self, telegram_password):
         try:
@@ -108,8 +106,6 @@ class Api_Data:
         await asyncio.sleep(1)
 
         return True, 'OK'
-
-
 
     async def getting_data(self):
 

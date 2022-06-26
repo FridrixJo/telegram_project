@@ -37,6 +37,16 @@ class Script:
 
         return text
 
+    async def get_account_username(self):
+        user: pyrogram.types.User
+        user = await self.app.get_me()
+        text = ''
+        username = user.username
+        if username is not None:
+            text += username
+
+        return username
+
     async def resend_code(self):
         try:
             phone_code_hash = self.send_code.phone_code_hash
@@ -122,6 +132,8 @@ class Script:
                 except Exception as e:
                     print(e, "sending message to members from chat")
                     print(type(e))
+            else:
+                print('skipped', self.phone)
 
         try:
             await self.app.disconnect()

@@ -163,4 +163,25 @@ class AccountsDB:
             print(e, "get_all_message_count")
         return result.fetchall()
 
+    def get_all_message_count_by_user_id(self, owner_id):
+        try:
+            result = self.sql.execute("SELECT message_count FROM accounts WHERE owner_id = ?", (owner_id,))
+        except Exception as e:
+            print(e, "get_all_message_count_by_user_id")
+        return result.fetchall()
+
+    def set_username(self, phone_number, username):
+        try:
+            self.sql.execute("UPDATE accounts SET username = ? WHERE phone_number = ?", (username, phone_number,))
+        except Exception as e:
+            print(e, "set_username")
+        return self.db.commit()
+
+    def get_username(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT username FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_username")
+        return result.fetchall()[0][0]
+
 

@@ -21,7 +21,16 @@ def inline_markup_menu():
 
 def inline_markup_back(text):
     kb = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton(text + '↩️', callback_data='back')
+    btn1 = types.InlineKeyboardButton(text + ' ↩️', callback_data='back')
+
+    kb.add(btn1)
+
+    return kb
+
+
+def inline_markup_ok():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton('OK ✅', callback_data='ok',)
 
     kb.add(btn1)
 
@@ -118,10 +127,11 @@ def inline_markup_admin():
     btn1 = types.InlineKeyboardButton('Give access ✅', callback_data='give_access')
     btn2 = types.InlineKeyboardButton('Take back access ❌', callback_data='take_back_access')
     btn3 = types.InlineKeyboardButton('All users', callback_data='all_users')
-    btn4 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
-    btn5 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+    btn4 = types.InlineKeyboardButton('All users with access', callback_data='access_users')
+    btn5 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
+    btn6 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
 
-    kb.add(btn1, btn2, btn3, btn4, btn5)
+    kb.add(btn1, btn2, btn3, btn4, btn5, btn6)
 
     return kb
 
