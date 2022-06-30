@@ -138,3 +138,17 @@ class UsersDB:
             return result.fetchall()[0][0]
         except Exception as e:
             print(e, "get_purchases")
+
+    def get_users_by_period(self, period):
+        try:
+            result = self.sql.execute("SELECT `user_id` FROM `users` WHERE `period` = ?", (period,))
+            return result.fetchall()
+        except Exception as s:
+            print(type(s))
+
+    def get_periods(self):
+        try:
+            result = self.sql.execute("SELECT period FROM `users`")
+            return result.fetchall()
+        except Exception as s:
+            print(type(s))

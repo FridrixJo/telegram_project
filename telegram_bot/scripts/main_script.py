@@ -43,9 +43,9 @@ class Script:
         text = ''
         username = user.username
         if username is not None:
-            text += username
+            text += '@' + username
 
-        return username
+        return text
 
     async def resend_code(self):
         try:
