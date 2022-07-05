@@ -5,6 +5,8 @@ from pyrogram import Client
 from pyrogram.enums import UserStatus, ChatMemberStatus, SentCodeType, ChatMembersFilter
 from pyrogram.types import SentCode
 
+import re
+
 from pyrogram.types import Chat, ChatPreview
 
 import random
@@ -71,26 +73,32 @@ class Script:
         return True, 'OK'
 
     async def input_code(self, telegram_code: SentCodeType):
-        print(self.send_code)
-        if self.send_code.type == SentCodeType.APP:
-            code = telegram_code
-            try:
-                await self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(code))
+        try:
+            await self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(telegram_code))
+        except Exception as e:
+            print(type(e))
+            print(e)
+            print(e.args)
+            print('input code')
+            return False, e
 
-                return True, 'OK'
-            except Exception as e:
-                print(type(e))
-                print(e)
-                print(e.args)
-                print('input code')
-                return False, e
-        else:
-            return False, 'Код не отправляется в Telegram из-за ограничений вашего акканута, попробуйте позже'
+        return True, 'OK'
+
+    async def check_chat_link(self):
+        reg = r'(https://t.me/)(.+)'
+        x = re.search(reg, self.chat_link)
+        if x is not None:
+            print(x[0])
+            print(x[1])
+            self.chat_link = '@'
+            self.chat_link += x[2]
+
+    def get_chat_link(self):
+        return self.chat_link
 
     async def get_chat_members(self):
-
-        print(self.app)
-
+        await self.check_chat_link()
+        print(self.chat_link)
         try:
             chat = await self.app.get_chat(self.chat_link)
         except Exception as e:

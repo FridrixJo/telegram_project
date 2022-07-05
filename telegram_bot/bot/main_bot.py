@@ -291,7 +291,6 @@ def resend_telegram_code(message, text, machine):
         sent = bot.send_message(message.chat.id, 'Ошибка: ' + str(response[1]), reply_markup=inline_markup_back('Вернуться на главное меню'))
 
 
-
 def get_code(message, prev_message_id, machine: Script):
     bot.delete_message(chat_id=message.chat.id, message_id=prev_message_id)
     if message.content_type == 'text':

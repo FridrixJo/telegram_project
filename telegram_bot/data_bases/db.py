@@ -44,11 +44,25 @@ class AccountsDB:
             print(e, "get_api_id")
         return result.fetchall()
 
+    def get_added_numbers_by_owner_id(self, owner_id, status):
+        try:
+            result = self.sql.execute("SELECT phone_number FROM accounts WHERE owner_id = ? AND status = ?", (owner_id, status,))
+        except Exception as e:
+            print(e, "get_added_numbers_by_owner_id")
+        return result.fetchall()
+
     def get_all_numbers(self):
         try:
             result = self.sql.execute("SELECT phone_number FROM accounts")
         except Exception as e:
             print(e, "get_all_numbers")
+        return result.fetchall()
+
+    def get_all_added_numbers(self, status):
+        try:
+            result = self.sql.execute("SELECT phone_number FROM accounts WHERE status = ?", (status,))
+        except Exception as e:
+            print(e, "get_all_added_numbers")
         return result.fetchall()
 
     def account_exists(self, phone_number):
@@ -185,5 +199,45 @@ class AccountsDB:
             print(e, "get_username")
         return result.fetchall()[0][0]
 
+    def set_status(self, phone_number, status):
+        try:
+            self.sql.execute("UPDATE accounts SET status = ? WHERE phone_number = ?", (status, phone_number,))
+        except Exception as e:
+            print(e, "set_status")
+        return self.db.commit()
 
+    def get_status(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT status FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_status")
+        return result.fetchall()[0][0]
+
+    def set_mailing_message(self, phone_number, mailing_message):
+        try:
+            self.sql.execute("UPDATE accounts SET mailing_message = ? WHERE phone_number = ?", (mailing_message, phone_number,))
+        except Exception as e:
+            print(e, "set_mailing_message")
+        return self.db.commit()
+
+    def get_mailing_message(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT mailing_message FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_mailing_message")
+        return result.fetchall()[0][0]
+
+    def set_chat(self, phone_number, chat):
+        try:
+            self.sql.execute("UPDATE accounts SET chat = ? WHERE phone_number = ?", (chat, phone_number,))
+        except Exception as e:
+            print(e, "set_chat")
+        return self.db.commit()
+
+    def get_chat(self, phone_number):
+        try:
+            result = self.sql.execute("SELECT chat FROM accounts WHERE phone_number = ?", (phone_number,))
+        except Exception as e:
+            print(e, "get_chat")
+        return result.fetchall()[0][0]
 

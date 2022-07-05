@@ -146,7 +146,7 @@ async def my_profile(call: types.CallbackQuery):
 
 
 async def get_list_numbers(call: types.CallbackQuery):
-    numbers = db.get_numbers_by_owner_id(call.message.chat.id)
+    numbers = db.get_added_numbers_by_owner_id(call.message.chat.id, 'added')
     btn = types.InlineKeyboardButton('Назад ↩️', callback_data='back')
     text = '<i>Список всех добавленных аккаунтов</i>' + '\n' + f'<i>Количество акканутов</i>: <b>{len(numbers)}</b>'
     if len(numbers):
@@ -197,7 +197,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as file:
         phone = file['phone']
     if call.data == 'yes':
-        db.delete_phone_number(phone)
+        db.set_status(phone, 'deleted')
         await clear_state(state)
         await get_list_numbers(call)
     elif call.data == 'no':
@@ -277,6 +277,7 @@ async def get_number(message: types.Message, state: FSMContext):
             phone = message.text
 
         if db.account_exists(phone):
+            db.set_status(phone, 'added')
             await bot.delete_message(message.chat.id, wait.message_id)
             await bot.send_message(message.chat.id, '<i>Аккаунт уже добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
             await FSMWebScraper.choice.set()
@@ -409,6 +410,7 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
                          phone_number=phone,
                          chat_link=file['chat'],
                          data=message.text)
+        db.set_mailing_message(phone, message.text)
         await bot.send_message(message.chat.id, '<i>Отправляем код в Telegram</i> ⏳', parse_mode='HTML')
         params = await machine.verify()
         if params[0]:
@@ -469,6 +471,7 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                         chat_params = await actual_machine.get_chat_members()
                         if chat_params[0]:
                             phone = actual_machine.get_phone()
+                            db.set_chat(phone, actual_machine.get_chat_link())
                             db.set_condition(phone, True)
                             db.set_name(phone, await actual_machine.get_account_name())
                             db.set_username(phone, await actual_machine.get_account_username())
@@ -552,6 +555,7 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
 @dispatcher.message_handler(state=FSMAdmin.del_param)
 async def del_access(message: types.Message):
     users_by_period = users_db.get_users_by_period(message.text)
+    await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
     text = 'Access was restricted on accounts with ChatID: \n'
     for i in users_by_period:
         if (users_db.get_seconds(i[0]) + users_db.get_period(i[0])*24*3600) - time.time() <= 0:
@@ -669,7 +673,7 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
 async def get_user_list_numbers(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as file:
         user_id = file['user_id']
-    numbers = db.get_numbers_by_owner_id(user_id)
+    numbers = db.get_added_numbers_by_owner_id(user_id, 'added')
     btn = types.InlineKeyboardButton(text='Back ↩️', callback_data='admin_back_list')
     await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'UserID: <a><b>{user_id}</b></a>\nList numbers quantity: {len(numbers)}', reply_markup=inline_markup_numbers(numbers, db).add(btn), parse_mode='HTML')
 
@@ -682,7 +686,7 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
     else:
         async with state.proxy() as file:
             user_id = file['user_id']
-        for i in db.get_numbers_by_owner_id(user_id):
+        for i in db.get_added_numbers_by_owner_id(user_id, 'added'):
             if str(i[0]) == call.data:
                 response = f'number: <b>{call.data}</b>' + '\n'
                 response += f'api_id: <b>{db.get_api_id(call.data)}</b>' + '\n'
