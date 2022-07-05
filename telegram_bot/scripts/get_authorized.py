@@ -114,7 +114,6 @@ class Api_Data:
             self.browser.get(self.apps_link)
 
             create_btn = self.browser.find_elements(By.ID, 'app_save_btn')
-            print(create_btn[0].text)
         except Exception as e:
             print(e, 'getting apps_link error')
             return 0, 0, self.phone_number, False, 'getting apps_link error'

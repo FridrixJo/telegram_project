@@ -108,7 +108,7 @@ class Script:
         self.members = []
 
         if type(chat) == pyrogram.types.Chat:
-            async for i in self.app.get_chat_members(chat_id=chat.id, limit=150, filter=ChatMembersFilter.RECENT):
+            async for i in self.app.get_chat_members(chat_id=chat.id, limit=200, filter=ChatMembersFilter.RECENT):
                 try:
                     self.members.append(i)
                 except Exception as e:

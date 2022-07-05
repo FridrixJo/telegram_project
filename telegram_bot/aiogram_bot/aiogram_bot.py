@@ -100,9 +100,9 @@ async def start(call: types.CallbackQuery):
 @dispatcher.message_handler(Text(equals='отмена', ignore_case=True), state=[FSMWebScraper.number, FSMWebScraper.password])
 async def cancel_handler(message: types.Message, state: FSMContext):
     if web_scraper_db.user_exists(message.chat.id):
-        web_scraper_db.delete_user(message.chat.id)
         global GlobalList
         hash_scraper = web_scraper_db.get_hash(message.chat.id)
+        web_scraper_db.delete_user(message.chat.id)
         for i in GlobalList:
             if i['data'][0] == hash_scraper:
                 GlobalList.remove(i)
@@ -111,7 +111,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     await send_menu(message)
 
 
-@dispatcher.message_handler(Text(equals='назад', ignore_case=True), state=[FSMWebScraper.chat, FSMWebScraper.mailing_text, FSMWebScraper.telegram_code])
+@dispatcher.message_handler(Text(equals='назад', ignore_case=True), state=[FSMWebScraper.chat, FSMWebScraper.mailing_text])
 async def cancel_handler(message: types.Message, state: FSMContext):
     await bot.send_message(message.chat.id, '<i>Действие отменено</i> ↩', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     async with state.proxy() as file:
@@ -369,7 +369,6 @@ async def get_choice(call: types.CallbackQuery, state: FSMContext):
             phone = file['phone']
         if db.get_condition(phone) == 0:
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            await bot.send_message(call.message.chat.id, phone)
             await bot.send_message(call.message.chat.id, '🔹Отправьте ссылку на чат 🔗', reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
             await FSMWebScraper.chat.set()
         else:
@@ -543,6 +542,9 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
     elif call.data == 'period_list':
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(users_db.get_periods()), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
         await FSMAdmin.cancel.set()
+    elif call.data == 'chats':
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(db.get_all_chats()), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
+        await FSMAdmin.cancel.set()
     elif call.data == 'sharing':
         await bot.send_message(call.message.chat.id, 'Input data for sharing', reply_markup=reply_markup_call_off('Cancel'))
         await FSMAdmin.sharing.set()
@@ -558,6 +560,7 @@ async def del_access(message: types.Message):
     await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
     text = 'Access was restricted on accounts with ChatID: \n'
     for i in users_by_period:
+        print((users_db.get_seconds(i[0]) + users_db.get_period(i[0])*24*3600) - time.time())
         if (users_db.get_seconds(i[0]) + users_db.get_period(i[0])*24*3600) - time.time() <= 0:
             users_db.set_access(i[0], 'start')
             users_db.set_seconds(i[0], None)
@@ -581,6 +584,7 @@ async def start_sharing(message: types.Message, state: FSMContext):
 
 async def get_statistics(call):
     text = f'Users quantity: <b>{len(users_db.get_users())}</b>' + '\n'
+    text += f'Active clients: <b>{len(users_db.get_users_by_access("using"))}</b>' + '\n'
     text += f'Numbers quantity: <b>{len(db.get_all_numbers())}</b>' + '\n'
     conditons = db.get_all_conditions()
     count = 0

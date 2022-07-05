@@ -241,3 +241,9 @@ class AccountsDB:
             print(e, "get_chat")
         return result.fetchall()[0][0]
 
+    def get_all_chats(self):
+        try:
+            result = self.sql.execute("SELECT chat FROM accounts",)
+        except Exception as e:
+            print(e, "get_all_chats")
+        return result.fetchall()
