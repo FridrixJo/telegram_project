@@ -693,7 +693,9 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
                 response += f'api_hash: <b>{db.get_api_hash(call.data)}</b>' + '\n'
                 response += f'owner_id: <b>{db.get_owner_id(call.data)}</b>' + '\n'
                 response += f'name: <b>{db.get_name(call.data)}</b>' + '\n'
-                response += f'send messages quantity: <b>{db.get_message_count(call.data)}</b>'
+                response += f'send messages quantity: <b>{db.get_message_count(call.data)}</b>' + '\n'
+                response += f'mailing_text: <b>{db.get_mailing_message(call.data)}</b>' + '\n'
+                response += f'chat_link: <b>{db.get_chat(call.data)}</b>'
 
                 await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=response, reply_markup=inline_markup_admin_back('Back', 'admin_back_list'), parse_mode='HTML')
                 await FSMAdmin.phone_info_back.set()
