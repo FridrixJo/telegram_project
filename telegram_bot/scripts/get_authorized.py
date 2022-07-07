@@ -56,9 +56,7 @@ class Api_Data:
         try:
             await asyncio.sleep(1)
             errors = self.browser.find_elements(By.CLASS_NAME, 'alert-danger')
-            print(errors)
             if len(errors):
-                print('suka')
                 return False, 'invalid number'
         except Exception as e:
             print(e)
@@ -86,7 +84,6 @@ class Api_Data:
             await asyncio.sleep(1)
             errors = self.browser.find_elements(By.CLASS_NAME, 'alert-danger')
             if len(errors):
-                print('suka')
                 return False, 'invalid password'
         except Exception as e:
             print(e)
@@ -149,7 +146,6 @@ class Api_Data:
             self.browser.close()
             self.browser.quit()
 
-            print(api_id, api_hash)
             return api_id, api_hash, self.phone_number, True, 'OK'
         except Exception as e:
             print(e, "getting api_id, api_hash error")

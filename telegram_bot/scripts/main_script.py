@@ -20,7 +20,7 @@ class Script:
         self.data = data
         self.chat_link = chat_link
         self.phone = phone_number
-        self.send_code: SentCode
+        self.sent_code: SentCode
         self.members = []
 
     def get_phone(self):
@@ -49,22 +49,11 @@ class Script:
 
         return text
 
-    async def resend_code(self):
-        try:
-            phone_code_hash = self.send_code.phone_code_hash
-            self.send_code = await self.app.resend_code(phone_number=self.phone, phone_code_hash=phone_code_hash)
-        except Exception as e:
-            print(e)
-            print(type(e))
-            return False, e
-
-        return True, 'OK'
-
     async def verify(self):
         try:
             await self.app.connect()
-            await asyncio.sleep(1)
-            self.send_code = await self.app.send_code(self.phone)
+            self.sent_code = await self.app.send_code(self.phone)
+            print(self.sent_code)
         except Exception as e:
             print(e)
             print(type(e))
@@ -72,9 +61,12 @@ class Script:
 
         return True, 'OK'
 
-    async def input_code(self, telegram_code: SentCodeType):
+    async def input_code(self, telegram_code):
         try:
-            await self.app.sign_in(self.phone, str(self.send_code.phone_code_hash), str(telegram_code))
+            print(self.sent_code)
+            await self.app.sign_in(phone_number=self.phone, phone_code_hash=str(self.sent_code.phone_code_hash), phone_code=str(telegram_code))
+        except pyrogram.errors.exceptions.PhoneCodeExpired as e:
+            return False, 'Код уже неактуален. Либо пытаетесь сделать рассылку на аккаунте, с которого управляете ботом, выберите другой аккаунт для рассылки'
         except Exception as e:
             print(type(e))
             print(e)

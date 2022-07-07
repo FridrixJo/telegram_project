@@ -59,7 +59,7 @@ machine_db = MachineDB('../data_bases/accounts.db')
 
 storage = MemoryStorage()
 
-bot = Bot(token='5583638970:AAE9RTGf3u3hzbvV9VkhwJfQSRXfQfuwRxw')
+bot = Bot(token='5440048392:AAFz9IkSQ5XHA7ONUzNMlOk1M3xeYxKuOJ8')
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
@@ -139,7 +139,6 @@ async def my_profile(call: types.CallbackQuery):
     if response == 'using':
         seconds = users_db.get_seconds(call.message.chat.id)
         period = users_db.get_period(call.message.chat.id) * 24 * 3600
-        print(seconds, period)
         access = f'<i>🗓Вы имеете доступ к боту до <b>{time.ctime(seconds + period)}</b></i>'
     text += access
     await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text=text, parse_mode='HTML', reply_markup=inline_markup_back('Назад'))
@@ -176,14 +175,13 @@ async def start(call: types.CallbackQuery, state: FSMContext):
             phone = file['phone']
         if db.get_condition(phone) == 0:
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            await bot.send_message(call.message.chat.id, phone)
-            await bot.send_message(call.message.chat.id, '<i>Отправьте ссылку на чат</i> 🔗', reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
+            await bot.send_message(call.message.chat.id, '<i>🔷Отправьте ссылку на чат</i> 🔗', reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
             await FSMWebScraper.chat.set()
         else:
             await clear_state(state)
             await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Бот уже запущен на этом аккаунте, выберите другой', reply_markup=inline_markup_back('Главное меню'))
     elif call.data == 'delete_account':
-        text = '<i>Вы уверены что хотите удалить данный аккаунт с вашего списка?' + '\n' + 'После удаления вам придется заново пройти процедуру добавления акканута, если вы захотите опять его добавить в свой список</i>'
+        text = '<i>Вы точно уверены что хотите удалить данный аккаунт с вашего списка?\nПосле удаления данные аккаунта сохранятся и вы сможете опять его добавить</i>'
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_yes_no(), parse_mode='HTML')
         await FSMWebScraper.last_chance.set()
     elif call.data == 'back_opportunities':
@@ -200,6 +198,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
         db.set_status(phone, 'deleted')
         await clear_state(state)
         await get_list_numbers(call)
+        await FSMWebScraper.ListNumbers.set()
     elif call.data == 'no':
         await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text=f'<i>Аккаунт с номером</i> <code>{phone}</code>📱', reply_markup=inline_markup_opportunities(), parse_mode='HTML')
         await FSMWebScraper.opportunities.set()
@@ -337,7 +336,7 @@ async def get_password(message: types.Message, state: FSMContext):
             if not params[0]:
                 await actual_browser.remove_error()
                 await bot.delete_message(message.chat.id, wait.message_id)
-                await bot.send_message(message.chat.id, '⛔<b>Неверный код, попробуйте ввести еще раз</b>', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
+                await bot.send_message(message.chat.id, '⛔<b>Неверный код, попробуйте ввести код еще раз либо попробуйте добавить данный аккаунт позже</b>', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
                 await FSMWebScraper.password.set()
             else:
                 api = await actual_browser.getting_data()
@@ -377,11 +376,12 @@ async def get_choice(call: types.CallbackQuery, state: FSMContext):
 
     elif call.data == 'add_account':
         await clear_state(state)
+        await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
         await bot.send_message(call.message.chat.id, '🔹Введи номер аккаунта Telegram ☎\nНомер формата <b>+7YYYXXXXXXX</b>, или формата любой другой страны\n<b>🔺Примечание:</b> знак ➕ должен обязательно находиться вначале номера', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
         await FSMWebScraper.number.set()
     elif call.data == 'main_menu':
         await clear_state(state)
-        await send_menu(call.message)
+        await edit_to_menu(call.message)
 
 
 # GET CHAT FOR PARSING
@@ -418,7 +418,6 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
             dict_machine = {'data': [hash_machine, machine, user_id]}
 
             machine_db.add_user(message.chat.id)
-            await asyncio.sleep(1)
             machine_db.set_machine_id(message.chat.id, str(machine))
             machine_db.set_hash(message.chat.id, hash_machine)
 
@@ -427,7 +426,7 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
 
             file['hash_machine'] = hash_machine
 
-            await bot.send_message(message.chat.id, '🔹Введите код, отправленный вам в Telegram 🔢', reply_markup=reply_markup_call_off('Не приходит код, вернуться на главное меню'))
+            await bot.send_message(message.chat.id, '🔹Введите код, отправленный вам в Telegram 🔢\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация', reply_markup=reply_markup_call_off('Не приходит код, вернуться на главное меню'), parse_mode='HTML')
             await FSMWebScraper.telegram_code.set()
         else:
             await clear_state(state)

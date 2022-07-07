@@ -8,7 +8,7 @@ def inline_markup_menu():
     btn1 = types.InlineKeyboardButton('Добавить аккаунт', callback_data='add_account')
     btn2 = types.InlineKeyboardButton('Добавленные аккаунты', callback_data='added_accounts')
     btn3 = types.InlineKeyboardButton('Админ 👨‍💻', url='https://t.me/denis_mscw')
-    btn4 = types.InlineKeyboardButton('О боте 🤖', callback_data='about')
+    btn4 = types.InlineKeyboardButton('О боте 🤖', url='https://telegra.ph/Bot-dlya-rassylki-soobshchenij-Telegram-07-06')
     btn5 = types.InlineKeyboardButton('Купить аккаунты Telegram 📲', url='https://5sim.net/')
     btn6 = types.InlineKeyboardButton('Мой профиль 💰', callback_data='profile')
 
