@@ -1,30 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
-import asyncio
 
 import telebot
 from telebot import types
-from data_bases.db_users import UsersDB
 
 import time
-import datetime
-import random
-import re
 
-from data_bases.db import AccountsDB
-from data_bases.db_users import UsersDB
+from data_basesp.db import AccountsDB
+from data_basesp.db_users import UsersDB
 
-from scripts.get_authorized import Api_Data
-from scripts.main_script import Script
-
-from asyncio import set_event_loop, new_event_loop
+from tests.get_authorized import Api_Data
+from aiogram_bot.main_script import Script
 
 import threading
 
 bot = telebot.TeleBot('5583638970:AAE9RTGf3u3hzbvV9VkhwJfQSRXfQfuwRxw')
 
-db = AccountsDB('../data_bases/accounts.db')
-users_db = UsersDB('../data_bases/accounts.db')
+db = AccountsDB('../data_base/accounts.db')
+users_db = UsersDB('../data_base/accounts.db')
 
 
 def inline_markup_menu():

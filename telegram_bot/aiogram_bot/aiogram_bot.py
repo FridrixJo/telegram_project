@@ -1,6 +1,6 @@
 import time
 
-from aiogram import Bot, types
+from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -16,13 +16,13 @@ import asyncio
 import random
 import string
 
-from data_bases.db import AccountsDB
-from data_bases.db_users import UsersDB
-from data_bases.wbDB import WebScraperDB
-from data_bases.machineDB import MachineDB
+from data_base.db import AccountsDB
+from data_base.db_users import UsersDB
+from data_base.wbDB import WebScraperDB
+from data_base.machineDB import MachineDB
 
-from scripts.get_authorized import Api_Data
-from scripts.main_script import Script
+from main_script import Script
+from asyncio_browser import WebScraper
 
 
 class FSMWebScraper(StatesGroup):
@@ -49,17 +49,20 @@ class FSMAdmin(StatesGroup):
     period_list = State()
     del_param = State()
     sharing = State()
+    sharing_using = State()
     statistics = State()
+    del_list = State()
 
 
-db = AccountsDB('../data_bases/accounts.db')
-users_db = UsersDB('../data_bases/accounts.db')
-web_scraper_db = WebScraperDB('../data_bases/accounts.db')
-machine_db = MachineDB('../data_bases/accounts.db')
+db = AccountsDB('data_base/accounts.db')
+users_db = UsersDB('data_base/accounts.db')
+web_scraper_db = WebScraperDB('data_base/accounts.db')
+machine_db = MachineDB('data_base/accounts.db')
 
 storage = MemoryStorage()
 
-bot = Bot(token='5440048392:AAFz9IkSQ5XHA7ONUzNMlOk1M3xeYxKuOJ8')
+bot = Bot(token='5583638970:AAE4WgvD77v0eMv1wBEdVkSPCFlSxQUse9U')
+#                5440048392:AAEnoo5T26t99sg7Hq8Hh3ojPcc5-Irzc6k
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
@@ -105,6 +108,9 @@ async def cancel_handler(message: types.Message, state: FSMContext):
         web_scraper_db.delete_user(message.chat.id)
         for i in GlobalList:
             if i['data'][0] == hash_scraper:
+                web_scraper: WebScraper
+                web_scraper = i['data'][1]
+                await web_scraper.close()
                 GlobalList.remove(i)
     await clear_state(state)
     await bot.send_message(message.chat.id, '<i>Действие отменено</i> ↩', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
@@ -118,6 +124,14 @@ async def cancel_handler(message: types.Message, state: FSMContext):
         phone = file['phone']
     await bot.send_message(chat_id=message.chat.id, text=f'<i>Аккаунт с номером</i> <code>{phone}</code>📱', reply_markup=inline_markup_opportunities(), parse_mode='HTML')
     await FSMWebScraper.opportunities.set()
+
+
+@dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=[FSMAdmin.user, FSMAdmin.sharing, FSMAdmin.del_param, FSMAdmin.sharing_using])
+async def cancel_input_user_id(message: types.Message, state: FSMContext):
+    await clear_state(state)
+    await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
+    await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+    await FSMAdmin.admin_opportunities.set()
 
 
 @dispatcher.callback_query_handler(state=FSMAdmin.cancel)
@@ -281,9 +295,10 @@ async def get_number(message: types.Message, state: FSMContext):
             await bot.send_message(message.chat.id, '<i>Аккаунт уже добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
             await FSMWebScraper.choice.set()
         else:
-            scraper = Api_Data(phone)
+            scraper = WebScraper()
+            await scraper.initialize()
 
-            params = await scraper.login()
+            params = await scraper.input_phone_number(phone)
             if params[0]:
                 hash_scraper = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(16, 32)))
                 user_id = message.chat.id
@@ -304,7 +319,7 @@ async def get_number(message: types.Message, state: FSMContext):
                 await bot.send_message(message.chat.id, '🔹Введи код, отправленный вам в Telegram 🔤', reply_markup=reply_markup_call_off('Отмена'))
                 await FSMWebScraper.password.set()
             else:
-                await scraper.remove_error()
+                await scraper.remove_number_error()
                 await bot.delete_message(message.chat.id, wait.message_id)
                 await bot.send_message(message.chat.id, '⛔<b>Введенный вами номер некорректен, повторите процедуру еще раз</b>', parse_mode='HTML')
                 await bot.send_message(message.chat.id, '🔹Введи номер аккаунта Telegram ☎\nНомер формата <b>+7YYYXXXXXXX</b>, или формата любой другой страны\n<b>🔺Примечание:</b> знак ➕ должен обязательно находиться вначале номера', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
@@ -327,19 +342,19 @@ async def get_password(message: types.Message, state: FSMContext):
         hash_scraper = file['hash_scraper']
 
     global GlobalList
-    actual_browser: Api_Data
+    actual_browser: WebScraper
 
     for i in GlobalList:
         if i['data'][0] == hash_scraper:
             actual_browser = i['data'][1]
             params = await actual_browser.input_password(message.text)
             if not params[0]:
-                await actual_browser.remove_error()
+                await actual_browser.remove_password_error()
                 await bot.delete_message(message.chat.id, wait.message_id)
                 await bot.send_message(message.chat.id, '⛔<b>Неверный код, попробуйте ввести код еще раз либо попробуйте добавить данный аккаунт позже</b>', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
                 await FSMWebScraper.password.set()
             else:
-                api = await actual_browser.getting_data()
+                api = await actual_browser.get_api()
                 web_scraper_db.delete_user(message.chat.id)
                 GlobalList.remove(i)
                 if not api[3]:
@@ -527,8 +542,13 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
             file['access'] = 'take_back'
         await FSMAdmin.user.set()
     elif call.data == 'all_users':
-        await get_list_users(call)
-        await FSMAdmin.choose_user.set()
+        await get_all_names(call)
+        await FSMAdmin.cancel.set()
+    elif call.data == 'del_list':
+        text = f'WebScraper: {len(GlobalList)}\nMachineGun: {len(GlobalMachineList)}'
+        btn = types.InlineKeyboardButton(text='Back', callback_data='admin_back')
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_del_list_keyboard().add(btn))
+        await FSMAdmin.del_list.set()
     elif call.data == 'access_users':
         await get_list_using_users(call)
         await FSMAdmin.choose_user.set()
@@ -539,7 +559,7 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
         await bot.send_message(call.message.chat.id, 'Input del_params', reply_markup=reply_markup_call_off('Cancel'))
         await FSMAdmin.del_param.set()
     elif call.data == 'period_list':
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(users_db.get_periods()), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(users_db.get_periods_by('using')), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
         await FSMAdmin.cancel.set()
     elif call.data == 'chats':
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(db.get_all_chats()), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
@@ -547,10 +567,37 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
     elif call.data == 'sharing':
         await bot.send_message(call.message.chat.id, 'Input data for sharing', reply_markup=reply_markup_call_off('Cancel'))
         await FSMAdmin.sharing.set()
+    elif call.data == 'sharing_using':
+        await bot.send_message(call.message.chat.id, 'Input data for sharing with using 🤑', reply_markup=reply_markup_call_off('Cancel'))
+        await FSMAdmin.sharing_using.set()
     elif call.data == 'statistics':
         await clear_state(state)
         await get_statistics(call)
         await FSMAdmin.statistics.set()
+
+
+async def get_all_names(call: types.CallbackQuery):
+    name_list = users_db.get_all_names()
+    text = f'Users quantity: <b>{len(name_list)}</b>' + '\n'
+    for i in name_list:
+        text += i[0] + '\n'
+    if len(text) > 4096:
+        for x in range(0, len(text), 4096):
+            await bot.send_message(call.message.chat.id, text[x:x+4096])
+    else:
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, parse_mode='HTML')
+    await bot.send_message(call.message.chat.id, '<b>Весь список пользователей</b>', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+
+
+@dispatcher.callback_query_handler(state=FSMAdmin.del_list)
+async def del_list(call: types.CallbackQuery):
+    if call.data == 'web_scraper':
+        GlobalList.clear()
+    elif call.data == 'machine_gun':
+        GlobalMachineList.clear()
+
+    await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+    await FSMAdmin.admin_opportunities.set()
 
 
 @dispatcher.message_handler(state=FSMAdmin.del_param)
@@ -573,6 +620,17 @@ async def del_access(message: types.Message):
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.sharing)
 async def start_sharing(message: types.Message, state: FSMContext):
     for i in users_db.get_users():
+        try:
+            await bot.send_message(i[0], message.text, reply_markup=inline_markup_ok())
+        except Exception as error:
+            print(error)
+    await bot.send_message(message.chat.id, 'Done', reply_markup=types.ReplyKeyboardRemove())
+    await start_moderator(message, state)
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMAdmin.sharing_using)
+async def start_sharing(message: types.Message, state: FSMContext):
+    for i in users_db.get_users_by_access('using'):
         try:
             await bot.send_message(i[0], message.text, reply_markup=inline_markup_ok())
         except Exception as error:
@@ -666,7 +724,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
 @dispatcher.callback_query_handler(state=FSMAdmin.numbers_or_back)
 async def admin_back(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'admin_back_list':
-        await get_list_users(call)
+        await get_list_using_users(call)
         await FSMAdmin.choose_user.set()
     elif call.data == 'admin_user_list_numbers':
         await get_user_list_numbers(call, state)
@@ -684,7 +742,7 @@ async def get_user_list_numbers(call: types.CallbackQuery, state: FSMContext):
 @dispatcher.callback_query_handler(state=FSMAdmin.choose_phone)
 async def admin_back(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'admin_back_list':
-        await get_list_users(call)
+        await get_list_using_users(call)
         await FSMAdmin.choose_user.set()
     else:
         async with state.proxy() as file:
@@ -709,14 +767,6 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'admin_back_list':
         await get_user_list_numbers(call, state)
         await FSMAdmin.choose_phone.set()
-
-
-@dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=FSMAdmin.user)
-async def cancel_input_user_id(message: types.Message, state: FSMContext):
-    await clear_state(state)
-    await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
-    await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
-    await FSMAdmin.admin_opportunities.set()
 
 
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.user)

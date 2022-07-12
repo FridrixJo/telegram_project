@@ -5,13 +5,13 @@ import string
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver import ChromeOptions
 
-from fake_useragent import UserAgent
+opts = ChromeOptions()
+opts.add_argument("--headless")
 
 import asyncio
-from concurrent.futures.thread import ThreadPoolExecutor
 
-import time
 import random
 
 
@@ -20,7 +20,8 @@ class Api_Data:
         self.main_link = "https://my.telegram.org/auth"
         self.apps_link = "https://my.telegram.org/apps"
         self.phone_number = phone_number
-        self.browser = webdriver.Chrome(executable_path='../driver/chromedriver.exe')
+        #self.browser = webdriver.Chrome("message_spreader/scripts/driver/chromedriver.exe")
+        self.browser = webdriver.Chrome(options=opts, executable_path='../aiogram_bot/driver/chromedriver.exe')
 
     def browser_state(self):
         return self.phone_number

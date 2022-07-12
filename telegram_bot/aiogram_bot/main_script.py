@@ -77,13 +77,14 @@ class Script:
         return True, 'OK'
 
     async def check_chat_link(self):
-        reg = r'(https://t.me/)(.+)'
+        reg = r'(https://t.me/joinchat)(.+)'
         x = re.search(reg, self.chat_link)
-        if x is not None:
-            print(x[0])
-            print(x[1])
-            self.chat_link = '@'
-            self.chat_link += x[2]
+        if x is None:
+            reg = r'(https://t.me/)(.+)'
+            x = re.search(reg, self.chat_link)
+            if x is not None:
+                self.chat_link = '@'
+                self.chat_link += x[2]
 
     def get_chat_link(self):
         return self.chat_link

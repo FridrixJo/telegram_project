@@ -1,4 +1,7 @@
 import asyncio
+
+from pyppeteer import browser
+from pyppeteer import page
 from pyppeteer import launch
 import random
 import string
@@ -6,62 +9,153 @@ import string
 
 class WebScraper:
     def __init__(self):
-        self.browser: None
-        self.page: None
+        self.browser: browser.Browser
+        self.page: page.Page
+        self.phone: str
 
     async def initialize(self):
-        self.browser = await launch({"headless": False, "args": ["--start-maximized"]})
-        self.page = await self.browser.newPage()
+        try:
+            #self.browser = await launch({"headless": False})
+            self.browser = await launch(options={"arps": ['--no-sendbox']})
+            self.page = await self.browser.newPage()
+            print(type(self.browser), type(self.page))
+        except Exception as e:
+            print(e)
+            return False, 'sww'
+
+        print('OK')
+        return True, 'OK'
+
+    async def close(self):
+        try:
+            await self.browser.close()
+        except Exception as e:
+            print(e)
 
     async def input_phone_number(self, phone_number: str):
-        await self.page.goto('https://my.telegram.org/auth')
+        try:
+            self.phone = phone_number
 
-        await asyncio.sleep(1)
+            await self.page.goto('https://my.telegram.org/auth')
 
-        input_number_field = await self.page.querySelector('div.form-group > input.input-large')
-        btn = await self.page.querySelector('div.support_submit > button.btn-lg')
-
-        await self.page.type('div.form-group > input.input-large', phone_number)
-
-        await asyncio.sleep(2)
-
-        await btn.press('Enter')
-
-    async def input_password(self, password: str):
-
-        await asyncio.sleep(1)
-
-        input_password_field = await self.page.querySelector('div.form-group > input#my_password')
-        btn = await self.page.querySelector('div.support_submit > button.btn-lg')
-
-        await self.page.type('div.form-group > input#my_password', password)
-
-        await asyncio.sleep(1)
-
-        await btn.press('Enter')
-
-    async def get_api(self):
-        await asyncio.sleep(2)
-
-        await self.page.goto('https://my.telegram.org/apps')
-
-        await asyncio.sleep(1)
-
-        btn = await self.page.querySelector('button.btn-primary')
-        check_group = await self.page.querySelectorAll('div.form-group > span.uneditable-input')
-
-        if len(check_group) == 0:
-            app_title = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
-            short_name = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
-
-            await self.page.type('div.form-group > input#app_title', app_title)
             await asyncio.sleep(1)
 
-            await self.page.type('div.form-group > input#app_shortname', short_name)
+            btn = await self.page.querySelector('div.support_submit > button.btn-lg')
+
+            await self.page.type('div.form-group > input.input-large', phone_number)
+
             await asyncio.sleep(1)
 
             await btn.press('Enter')
-            await asyncio.sleep(2)
+
+            await asyncio.sleep(1)
+
+            errors = await self.page.querySelectorAll('div.alert-danger')
+            if len(errors):
+                print('alarm')
+                return False, 'alarm'
+        except Exception as e:
+            print(e)
+            return False, 'swww'
+
+        return True, 'OK'
+
+    async def remove_number_error(self):
+        await asyncio.sleep(1)
+        try:
+            error = await self.page.querySelector('div.alert-danger > a.close')
+            await error.press('Enter')
+            await asyncio.sleep(1)
+            input_number = await self.page.querySelector('div.form-group > input.input-large')
+            number = await self.page.evaluate('(element) => element.value', input_number)
+            print(number)
+            for _ in range(len(number)):
+                await input_number.press('Backspace')
+
+        except Exception as e:
+            print(e)
+            return False, 'sww'
+
+        return True, 'OK'
+
+    async def remove_password_error(self):
+        await asyncio.sleep(1)
+        try:
+            error = await self.page.querySelector('div.alert-danger > a.close')
+            await error.press('Enter')
+            await asyncio.sleep(1)
+            input_password = await self.page.querySelector('div.form-group > input#my_password')
+            password = await self.page.evaluate('(element) => element.value', input_password)
+            print(password)
+            for _ in range(len(password)):
+                await input_password.press('Backspace')
+
+        except Exception as e:
+            print(e)
+            return False, 'sww'
+
+        return True, 'OK'
+
+    async def input_password(self, password: str):
+        try:
+            await asyncio.sleep(1)
+
+            btn = await self.page.querySelector('div.support_submit > button.btn-lg')
+
+            await self.page.type('div.form-group > input#my_password', password)
+
+            await asyncio.sleep(1)
+
+            await btn.press('Enter')
+
+            await asyncio.sleep(1)
+
+            errors = await self.page.querySelectorAll('div.alert-danger')
+            if len(errors):
+                print('alarm')
+                return False, 'alarm'
+
+        except Exception as e:
+            return False, 'alarm'
+
+        return True, 'OK'
+
+    async def get_api(self):
+        try:
+            await asyncio.sleep(1)
+
+            await self.page.goto('https://my.telegram.org/apps')
+
+            await self.page.reload()
+
+            await asyncio.sleep(1)
+
+            check_group = await self.page.querySelectorAll('span.uneditable-input')
+
+            if len(check_group) == 0:
+                app_title = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
+                short_name = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
+                print(app_title, short_name)
+
+                await self.page.type('input#app_title', app_title)
+                await self.page.type('input#app_shortname', short_name)
+
+                await asyncio.sleep(1)
+
+                btn = await self.page.querySelector('button.btn-primary')
+                await btn.press('Enter')
+
+                await asyncio.sleep(1)
+
+            check_group = await self.page.querySelectorAll('span.uneditable-input')
+            api_id = await self.page.evaluate('(element) => element.textContent', check_group[0])
+            api_hash = await self.page.evaluate('(element) => element.textContent', check_group[1])
+        except Exception as e:
+            print(e)
+            return 0, 0, self.phone, False, 'sww'
+        await self.browser.close()
+        return api_id, api_hash, self.phone, True, 'OK'
+
 
 
 

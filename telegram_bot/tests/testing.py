@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from scripts.get_authorized import Api_Data
-from scripts.main_script import Script
-from data_bases.db import AccountsDB
+from tests.get_authorized import Api_Data
+from aiogram_bot.main_script import Script
+from data_basesp.db import AccountsDB
 
-db = AccountsDB('../data_bases/accounts.db')
+db = AccountsDB('../data_base/accounts.db')
 #   Phone = '79658044563'
 #   Phone = '79604610785'
 #   Phone = '79852059341'

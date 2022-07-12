@@ -1,6 +1,4 @@
-from pyrogram import Client
-from scripts.get_authorized import Api_Data
-from scripts.main_script import Script
+from aiogram_bot.main_script import Script
 
 #api = Api_Data()
 #params = api.login('79117946323')

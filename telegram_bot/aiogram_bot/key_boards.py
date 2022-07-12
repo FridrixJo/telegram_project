@@ -1,5 +1,5 @@
 from aiogram import types
-from data_bases.db import AccountsDB
+from data_base.db import AccountsDB
 
 
 def inline_markup_menu():
@@ -127,17 +127,31 @@ def inline_markup_admin():
     btn1 = types.InlineKeyboardButton('Give access ✅', callback_data='give_access')
     btn2 = types.InlineKeyboardButton('Take back access ❌', callback_data='take_back_access')
     btn3 = types.InlineKeyboardButton('All users', callback_data='all_users')
-    btn4 = types.InlineKeyboardButton('All users with access', callback_data='access_users')
-    btn5 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
-    btn6 = types.InlineKeyboardButton('Delete Function', callback_data='del_func')
-    btn7 = types.InlineKeyboardButton('Period List', callback_data='period_list')
-    btn8 = types.InlineKeyboardButton('Chats', callback_data='chats')
-    btn9 = types.InlineKeyboardButton('Sharing', callback_data='sharing')
-    btn10 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+    btn4 = types.InlineKeyboardButton('Delete List', callback_data='del_list')
+    btn5 = types.InlineKeyboardButton('All users with access', callback_data='access_users')
+    btn6 = types.InlineKeyboardButton('Statistics', callback_data='statistics')
+    btn7 = types.InlineKeyboardButton('Delete Function', callback_data='del_func')
+    btn8 = types.InlineKeyboardButton('Period List', callback_data='period_list')
+    btn9 = types.InlineKeyboardButton('Chats', callback_data='chats')
+    btn10 = types.InlineKeyboardButton('Sharing', callback_data='sharing')
+    btn11 = types.InlineKeyboardButton('Sharing with using 🤑', callback_data='sharing_using')
+    btn12 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
 
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10)
+    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12)
 
     return kb
+
+
+def inline_del_list_keyboard():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+
+    btn1 = types.InlineKeyboardButton('WebScraper', callback_data='web_scraper')
+    btn2 = types.InlineKeyboardButton('MachineGun', callback_data='machine_gun')
+
+    kb.add(btn1, btn2)
+
+    return kb
+
 
 
 def inline_markup_users(users: list):

@@ -68,6 +68,13 @@ class UsersDB:
         except Exception as e:
             print(e, "get_name")
 
+    def get_all_names(self):
+        try:
+            result = self.sql.execute("SELECT name FROM `users`")
+            return result.fetchall()
+        except Exception as s:
+            print(type(s))
+
     def set_access(self, user_id, access):
         try:
             self.sql.execute("UPDATE `users` SET access = ? WHERE user_id = ?", (access, user_id))
@@ -146,10 +153,9 @@ class UsersDB:
         except Exception as s:
             print(type(s))
 
-    def get_periods(self):
+    def get_periods_by(self, period):
         try:
-            result = self.sql.execute("SELECT period FROM `users`")
+            result = self.sql.execute("SELECT period FROM `users` WHERE access = ?", (period,))
             return result.fetchall()
         except Exception as s:
             print(type(s))
-
