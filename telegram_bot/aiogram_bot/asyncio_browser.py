@@ -15,8 +15,7 @@ class WebScraper:
 
     async def initialize(self):
         try:
-            #self.browser = await launch({"headless": False})
-            self.browser = await launch(options={"arps": ['--no-sendbox']})
+            self.browser = await launch(options={"args": ['--no-sandbox']})
             self.page = await self.browser.newPage()
             print(type(self.browser), type(self.page))
         except Exception as e:
@@ -52,11 +51,10 @@ class WebScraper:
 
             errors = await self.page.querySelectorAll('div.alert-danger')
             if len(errors):
-                print('alarm')
                 return False, 'alarm'
         except Exception as e:
             print(e)
-            return False, 'swww'
+            return False, e
 
         return True, 'OK'
 
@@ -74,7 +72,7 @@ class WebScraper:
 
         except Exception as e:
             print(e)
-            return False, 'sww'
+            return False, e
 
         return True, 'OK'
 
@@ -92,7 +90,7 @@ class WebScraper:
 
         except Exception as e:
             print(e)
-            return False, 'sww'
+            return False, e
 
         return True, 'OK'
 
@@ -116,7 +114,7 @@ class WebScraper:
                 return False, 'alarm'
 
         except Exception as e:
-            return False, 'alarm'
+            return False, e
 
         return True, 'OK'
 
@@ -125,8 +123,6 @@ class WebScraper:
             await asyncio.sleep(1)
 
             await self.page.goto('https://my.telegram.org/apps')
-
-            await self.page.reload()
 
             await asyncio.sleep(1)
 
@@ -152,7 +148,9 @@ class WebScraper:
             api_hash = await self.page.evaluate('(element) => element.textContent', check_group[1])
         except Exception as e:
             print(e)
-            return 0, 0, self.phone, False, 'sww'
+            await self.browser.close()
+            return 0, 0, self.phone, False, e
+
         await self.browser.close()
         return api_id, api_hash, self.phone, True, 'OK'
 

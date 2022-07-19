@@ -49,6 +49,7 @@ class FSMAdmin(StatesGroup):
     period_list = State()
     del_param = State()
     sharing = State()
+    sharing_start = State()
     sharing_using = State()
     statistics = State()
     del_list = State()
@@ -67,6 +68,9 @@ dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
 GlobalMachineList = []
+
+
+ADIMIN_IDS = [628860511, 899951880]
 
 
 # MAIN MENU CALLBACK_QUERY_HANDLER
@@ -104,12 +108,11 @@ async def start(call: types.CallbackQuery):
 async def cancel_handler(message: types.Message, state: FSMContext):
     if web_scraper_db.user_exists(message.chat.id):
         global GlobalList
-        hash_scraper = web_scraper_db.get_hash(message.chat.id)
         web_scraper_db.delete_user(message.chat.id)
         for i in GlobalList:
-            if i['data'][0] == hash_scraper:
+            if int(i['data'][1]) == message.chat.id:
                 web_scraper: WebScraper
-                web_scraper = i['data'][1]
+                web_scraper = i['data'][0]
                 await web_scraper.close()
                 GlobalList.remove(i)
     await clear_state(state)
@@ -126,7 +129,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     await FSMWebScraper.opportunities.set()
 
 
-@dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=[FSMAdmin.user, FSMAdmin.sharing, FSMAdmin.del_param, FSMAdmin.sharing_using])
+@dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=[FSMAdmin.user, FSMAdmin.sharing, FSMAdmin.del_param, FSMAdmin.sharing_start, FSMAdmin.sharing_using])
 async def cancel_input_user_id(message: types.Message, state: FSMContext):
     await clear_state(state)
     await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
@@ -189,7 +192,9 @@ async def start(call: types.CallbackQuery, state: FSMContext):
             phone = file['phone']
         if db.get_condition(phone) == 0:
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            await bot.send_message(call.message.chat.id, '<i>🔷Отправьте ссылку на чат</i> 🔗', reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
+            text = '🔹Отправьте ссылку на чат 🔗' + '\n\n'
+            text += '⚠<b>Примечание:</b> Бот не может пропарсить <i>Invite ссылку</i> (ссылка, начинающаяся со знака + после https://t.me/)'
+            await bot.send_message(call.message.chat.id, text=text, reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
             await FSMWebScraper.chat.set()
         else:
             await clear_state(state)
@@ -232,38 +237,45 @@ async def send_menu(message: types.Message):
 async def start(message: types.Message):
     if not users_db.user_exists(message.chat.id):
         users_db.add_user(message.chat.id)
-        first_name = message.from_user.first_name
-        last_name = message.from_user.last_name
-        username = message.from_user.username
-        name = ''
-        if first_name is not None:
-            name += first_name
-            name += ' '
-        if last_name is not None:
-            name += last_name
-            name += ' '
-        if username is not None:
-            name += '@'
-            name += username
-        users_db.set_name(message.chat.id, str(name))
+        name = get_name(message)
+        users_db.set_name(message.chat.id, name)
         users_db.set_access(message.chat.id, 'start')
+        text = f'<i>User</i> <b>{name}</b> <i>started using bot</i> 🤖'
+        for i in ADIMIN_IDS:
+            await bot.send_message(i, text, parse_mode='HTML')
 
     await send_menu(message)
 
 
-@dispatcher.message_handler(commands=['menu'], state=['*'])
-async def start_menu(message: types.Message, state: FSMContext):
+def get_name(message: types.Message):
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    username = message.from_user.username
+    name = ''
+    if first_name is not None:
+        name += first_name
+        name += ' '
+    if last_name is not None:
+        name += last_name
+        name += ' '
+    if username is not None:
+        name += '@'
+        name += username
+
+    return name
+
+
+@dispatcher.message_handler(commands=['menu'])
+async def start_menu(message: types.Message):
     global GlobalList, GlobalMachineList
     if web_scraper_db.user_exists(message.chat.id):
-        await clear_state(state)
         for i in GlobalList:
-            if i['data'][0] == web_scraper_db.get_hash(message.chat.id):
+            if int(i['data'][1]) == message.chat.id:
                 web_scraper_db.delete_user(message.chat.id)
                 GlobalList.remove(i)
     if machine_db.user_exists(message.chat.id):
-        await clear_state(state)
         for i in GlobalMachineList:
-            if i['data'][0] == machine_db.get_hash(message.chat.id):
+            if int(i['data'][1]) == message.chat.id:
                 machine_db.delete_user(message.chat.id)
                 GlobalMachineList.remove(i)
     await bot.send_message(message.chat.id, text='Главное меню', reply_markup=inline_markup_menu(), parse_mode='HTML')
@@ -282,7 +294,7 @@ async def clear_state(state: FSMContext):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.number)
 async def get_number(message: types.Message, state: FSMContext):
-    wait = await bot.send_message(message.chat.id, '<i>Ожидайте</i> ⏳', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
+    wait = await bot.send_message(message.chat.id, '<i>Ожидайте ⏳</i>', parse_mode='HTML', reply_markup=types.ReplyKeyboardRemove())
     if '+' in message.text:
 
         async with state.proxy() as file:
@@ -295,35 +307,38 @@ async def get_number(message: types.Message, state: FSMContext):
             await bot.send_message(message.chat.id, '<i>Аккаунт уже добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
             await FSMWebScraper.choice.set()
         else:
-            scraper = WebScraper()
-            await scraper.initialize()
+            try:
+                scraper = WebScraper()
+                await scraper.initialize()
 
-            params = await scraper.input_phone_number(phone)
-            if params[0]:
-                hash_scraper = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(16, 32)))
-                user_id = message.chat.id
-                web_dict = {'data': [hash_scraper, scraper, user_id]}
+                params = await scraper.input_phone_number(phone)
+                if params[0]:
+                    web_dict = {'data': [scraper, message.chat.id]}
 
-                web_scraper_db.add_user(message.chat.id)
-                await asyncio.sleep(1)
-                web_scraper_db.set_web_scraper_id(message.chat.id, str(scraper))
-                web_scraper_db.set_hash(message.chat.id, hash_scraper)
+                    web_scraper_db.add_user(message.chat.id)
+                    web_scraper_db.set_web_scraper_id(message.chat.id, str(scraper))
 
-                global GlobalList
-                GlobalList.append(web_dict)
+                    global GlobalList
+                    GlobalList.append(web_dict)
 
-                async with state.proxy() as file:
-                    file['hash_scraper'] = hash_scraper
-
+                    await bot.delete_message(message.chat.id, wait.message_id)
+                    await bot.send_message(message.chat.id, '🔹Введи код, отправленный вам в Telegram 🔤', reply_markup=reply_markup_call_off('Отмена'))
+                    await FSMWebScraper.password.set()
+                else:
+                    await bot.delete_message(message.chat.id, wait.message_id)
+                    if params[1] == 'alarm':
+                        await scraper.remove_number_error()
+                        await bot.send_message(message.chat.id, '⛔<b>Введенный вами номер некорректен, повторите процедуру еще раз</b>', parse_mode='HTML')
+                        await bot.send_message(message.chat.id, '🔹Введи номер аккаунта Telegram ☎\nНомер формата <b>+7YYYXXXXXXX</b>, или формата любой другой страны\n<b>🔺Примечание:</b> знак ➕ должен обязательно находиться вначале номера', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
+                        await FSMWebScraper.number.set()
+                    else:
+                        await scraper.close()
+                        await clear_state(state)
+                        await bot.send_message(message.chat.id, f'⛔<b>Ошибка</b>: {params[1]}\n<i>Попробуйте позже</i>', reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
+            except Exception as e:
                 await bot.delete_message(message.chat.id, wait.message_id)
-                await bot.send_message(message.chat.id, '🔹Введи код, отправленный вам в Telegram 🔤', reply_markup=reply_markup_call_off('Отмена'))
-                await FSMWebScraper.password.set()
-            else:
-                await scraper.remove_number_error()
-                await bot.delete_message(message.chat.id, wait.message_id)
-                await bot.send_message(message.chat.id, '⛔<b>Введенный вами номер некорректен, повторите процедуру еще раз</b>', parse_mode='HTML')
-                await bot.send_message(message.chat.id, '🔹Введи номер аккаунта Telegram ☎\nНомер формата <b>+7YYYXXXXXXX</b>, или формата любой другой страны\n<b>🔺Примечание:</b> знак ➕ должен обязательно находиться вначале номера', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
-                await FSMWebScraper.number.set()
+                await clear_state(state)
+                await bot.send_message(message.chat.id, f'<b>Ошибка:</b> {e}', reply_markup=inline_markup_back('Главное меню'), parse_mode='HTML')
 
     else:
         await bot.delete_message(message.chat.id, wait.message_id)
@@ -336,41 +351,61 @@ async def get_number(message: types.Message, state: FSMContext):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.password)
 async def get_password(message: types.Message, state: FSMContext):
-    wait = await bot.send_message(message.chat.id, '<i>Ожидайте</i> ⏳', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
-
-    async with state.proxy() as file:
-        hash_scraper = file['hash_scraper']
+    wait = await bot.send_message(message.chat.id, '<i>Ожидайте ⏳</i>', parse_mode='HTML', reply_markup=types.ReplyKeyboardRemove())
 
     global GlobalList
     actual_browser: WebScraper
 
-    for i in GlobalList:
-        if i['data'][0] == hash_scraper:
-            actual_browser = i['data'][1]
-            params = await actual_browser.input_password(message.text)
-            if not params[0]:
-                await actual_browser.remove_password_error()
-                await bot.delete_message(message.chat.id, wait.message_id)
-                await bot.send_message(message.chat.id, '⛔<b>Неверный код, попробуйте ввести код еще раз либо попробуйте добавить данный аккаунт позже</b>', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
-                await FSMWebScraper.password.set()
-            else:
-                api = await actual_browser.get_api()
-                web_scraper_db.delete_user(message.chat.id)
-                GlobalList.remove(i)
-                if not api[3]:
-                    await bot.delete_message(message.chat.id, wait.message_id)
-                    await bot.send_message(message.chat.id, '<b>Технические неполадки</b> 🛠... <i>Попробуйте позже или добавьте другой аккаунт</i>', parse_mode='HTML')
-                    await send_menu(message)
-                else:
-                    phone = api[2]
-                    db.add_phone_number(phone)
-                    db.set_api_id(phone, api[0])
-                    db.set_api_hash(phone, api[1])
-                    db.set_owner_id(phone, message.chat.id)
+    count = 0
 
-                    await bot.delete_message(message.chat.id, wait.message_id)
-                    await bot.send_message(message.chat.id, '<i>Аккаунт успешно добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
-                    await FSMWebScraper.choice.set()
+    for i in GlobalList:
+        if int(i['data'][1]) == message.chat.id:
+            count += 1
+            actual_browser = i['data'][0]
+            try:
+                params = await actual_browser.input_password(message.text)
+                if not params[0]:
+                    if params[1] == 'alarm':
+                        await actual_browser.remove_password_error()
+                        await bot.delete_message(message.chat.id, wait.message_id)
+                        await bot.send_message(message.chat.id, '⛔<b>Неверный код, попробуйте ввести код еще раз либо добавьте данный аккаунт позже</b>', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
+                        await FSMWebScraper.password.set()
+                    else:
+                        await bot.delete_message(message.chat.id, wait.message_id)
+                        await clear_state(state)
+                        await bot.send_message(message.chat.id, '<b>Технические неполадки</b> 🛠... <i>Попробуйте позже или добавьте другой аккаунт</i>',  reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
+                else:
+                    api = await actual_browser.get_api()
+                    web_scraper_db.delete_user(message.chat.id)
+                    GlobalList.remove(i)
+                    if not api[3]:
+                        await bot.delete_message(message.chat.id, wait.message_id)
+                        await clear_state(state)
+                        await bot.send_message(message.chat.id, '<b>Технические неполадки</b> 🛠... <i>Попробуйте позже или добавьте другой аккаунт</i>',  reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
+                    else:
+                        phone = api[2]
+                        db.add_phone_number(phone)
+                        db.set_api_id(phone, api[0])
+                        db.set_api_hash(phone, api[1])
+                        db.set_owner_id(phone, message.chat.id)
+
+                        await bot.delete_message(message.chat.id, wait.message_id)
+                        await bot.send_message(message.chat.id, '<i>Аккаунт успешно добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
+                        await FSMWebScraper.choice.set()
+            except Exception as error:
+                try:
+                    web_scraper_db.delete_user(message.chat.id)
+                    GlobalList.remove(i)
+                except Exception as e:
+                    print(e)
+                await bot.delete_message(message.chat.id, wait.message_id)
+                await clear_state(state)
+                await bot.send_message(message.chat.id, f'<b>Ошибка:</b> {str(error)}', reply_markup=inline_markup_back('Главное меню'), parse_mode='HTML')
+
+    if count == 0:
+        await bot.delete_message(message.chat.id, wait.message_id)
+        await clear_state(state)
+        await bot.send_message(message.chat.id, '<i>Технические неполадки, попробуйте позже</i> 🛠', reply_markup=inline_markup_back('Главное меню'), parse_mode='HTML')
 
 
 # SUB MENU WHEN ADDING SUCCESS NEW NUMBER
@@ -383,7 +418,9 @@ async def get_choice(call: types.CallbackQuery, state: FSMContext):
             phone = file['phone']
         if db.get_condition(phone) == 0:
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            await bot.send_message(call.message.chat.id, '🔹Отправьте ссылку на чат 🔗', reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
+            text = '🔹Отправьте ссылку на чат 🔗' + '\n\n'
+            text += '⚠<b>Примечание:</b> Бот не может пропарсить <i>Invite ссылку</i> (ссылка, начинающаяся со знака + после https://t.me/)'
+            await bot.send_message(call.message.chat.id, text=text, reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
             await FSMWebScraper.chat.set()
         else:
             await clear_state(state)
@@ -416,37 +453,37 @@ async def get_chat(message: types.Message, state: FSMContext):
 async def get_mailing_text(message: types.Message, state: FSMContext):
     await bot.send_message(message.chat.id, '<i>Принято</i> ✅', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     async with state.proxy() as file:
-        file['mailing_text'] = message.text
-        phone = file['phone']
-        machine = Script(session_name=phone,
-                         api_id=db.get_api_id(phone),
-                         api_hash=db.get_api_hash(phone),
-                         phone_number=phone,
-                         chat_link=file['chat'],
-                         data=message.text)
-        db.set_mailing_message(phone, message.text)
-        await bot.send_message(message.chat.id, '<i>Отправляем код в Telegram</i> ⏳', parse_mode='HTML')
-        params = await machine.verify()
-        if params[0]:
-            hash_machine = ''.join(random.choice(string.digits + string.ascii_letters + string.printable) for _ in range(random.randrange(16, 32)))
-            user_id = str(message.chat.id)
-            dict_machine = {'data': [hash_machine, machine, user_id]}
+        try:
+            file['mailing_text'] = message.text
+            phone = file['phone']
+            session_name = ''.join(random.choice(string.digits) for _ in range(random.randrange(8, 12)))
+            machine = Script(session_name=session_name,
+                             api_id=db.get_api_id(phone),
+                             api_hash=db.get_api_hash(phone),
+                             phone_number=phone,
+                             chat_link=file['chat'],
+                             data=message.text)
+            db.set_mailing_message(phone, message.text)
+            await bot.send_message(message.chat.id, '<i>Отправляем код в Telegram</i> ⏳', parse_mode='HTML')
+            params = await machine.verify()
+            if params[0]:
+                dict_machine = {'data': [machine, message.chat.id]}
 
-            machine_db.add_user(message.chat.id)
-            machine_db.set_machine_id(message.chat.id, str(machine))
-            machine_db.set_hash(message.chat.id, hash_machine)
+                machine_db.add_user(message.chat.id)
+                machine_db.set_machine_id(message.chat.id, str(machine))
 
-            global GlobalMachineList
-            GlobalMachineList.append(dict_machine)
+                global GlobalMachineList
+                GlobalMachineList.append(dict_machine)
 
-            file['hash_machine'] = hash_machine
-
-            await bot.send_message(message.chat.id, '🔹Введите код, отправленный вам в Telegram 🔢\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация', reply_markup=reply_markup_call_off('Не приходит код, вернуться на главное меню'), parse_mode='HTML')
-            await FSMWebScraper.telegram_code.set()
-        else:
+                await bot.send_message(message.chat.id, '🔹Введите код, отправленный вам в Telegram 🔢\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация', reply_markup=reply_markup_call_off('Не приходит код, вернуться на главное меню'), parse_mode='HTML')
+                await FSMWebScraper.telegram_code.set()
+            else:
+                await clear_state(state)
+                await bot.send_message(message.chat.id, '⛔<b>Ошибка:</b> ' + str(params[1]), reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
+        except Exception as e:
+            print(e)
             await clear_state(state)
-            await clear_state(state)
-            await bot.send_message(message.chat.id, '⛔<b>Ошибка:</b> ' + str(params[1]), reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
+            await bot.send_message(message.chat.id, '⛔<b>Ошибка:</b> ' + str(e), reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
 
 
 # TELEGRAM_CODE FINAL PART
@@ -458,26 +495,26 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
         await bot.send_message(message.chat.id, '<i>Принято</i> ✅', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
         await clear_state(state)
         if machine_db.user_exists(message.chat.id):
-            hash_machine = machine_db.get_hash(message.chat.id)
             machine_db.delete_user(message.chat.id)
             for i in GlobalMachineList:
-                if i['data'][0] == hash_machine:
+                if int(i['data'][1]) == message.chat.id:
                     GlobalMachineList.remove(i)
         await send_menu(message)
     else:
-        wait = await bot.send_message(message.chat.id, '<i>Ожидайте</i> ⏳', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
-
-        async with state.proxy() as file:
-            hash_machine = file['hash_machine']
+        text = '<i>Ожидайте</i> ⏳' + '\n\n'
+        text += '<i>Время ожидания зависит от количества участников чата, так как бот полностью перебирает всех пользователей чата и выбирает каждый раз рандомных 🎲</i>'
+        wait = await bot.send_message(message.chat.id, text=text, reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
 
         actual_machine: Script
 
+        count = 0
+
         for i in GlobalMachineList:
-            if i['data'][0] == hash_machine:
-                actual_machine = i['data'][1]
+            if int(i['data'][1]) == message.chat.id:
+                count += 1
+                actual_machine = i['data'][0]
                 GlobalMachineList.remove(i)
-                if machine_db.user_exists(message.chat.id):
-                    machine_db.delete_user(message.chat.id)
+                machine_db.delete_user(message.chat.id)
                 try:
                     params = await actual_machine.input_code(message.text)
                     if params[0]:
@@ -506,15 +543,23 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                                 text = f'<i>🤖 Бот на аккаунте</i> <code>{phone}</code> <b>{db.get_name(phone)} {db.get_username(phone)}</b <i>приостановлен</i> 🚫'
                                 await bot.send_message(message.chat.id, text, reply_markup=inline_markup_ok(), parse_mode='HTML')
                         else:
+                            await bot.delete_message(chat_id=message.chat.id, message_id=wait.message_id)
                             await clear_state(state)
                             await bot.send_message(message.chat.id, '⛔<b>Ошибка:</b> ' + str(chat_params[1]), reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
 
                     else:
+                        await bot.delete_message(chat_id=message.chat.id, message_id=wait.message_id)
                         await clear_state(state)
                         await bot.send_message(message.chat.id, '⛔<b>Ошибка:</b> ' + str(params[1]), reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
                 except Exception as error:
+                    await bot.delete_message(chat_id=message.chat.id, message_id=wait.message_id)
                     await clear_state(state)
                     await bot.send_message(message.chat.id, '⛔<b>Ошибка:</b> ' + str(error), reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
+
+        if count == 0:
+            await clear_state(state)
+            await bot.send_message(message.chat.id, '<i>Технические неполадки, попробуйте позже</i> 🛠', reply_markup=inline_markup_back('Главное меню'), parse_mode='HTML')
+
 
 # MODERATOR PART
 
@@ -567,6 +612,9 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
     elif call.data == 'sharing':
         await bot.send_message(call.message.chat.id, 'Input data for sharing', reply_markup=reply_markup_call_off('Cancel'))
         await FSMAdmin.sharing.set()
+    elif call.data == 'sharing_start':
+        await bot.send_message(call.message.chat.id, 'Input data for sharing with start 😫', reply_markup=reply_markup_call_off('Cancel'))
+        await FSMAdmin.sharing_start.set()
     elif call.data == 'sharing_using':
         await bot.send_message(call.message.chat.id, 'Input data for sharing with using 🤑', reply_markup=reply_markup_call_off('Cancel'))
         await FSMAdmin.sharing_using.set()
@@ -622,6 +670,17 @@ async def start_sharing(message: types.Message, state: FSMContext):
     for i in users_db.get_users():
         try:
             await bot.send_message(i[0], message.text, reply_markup=inline_markup_ok())
+        except Exception as error:
+            print(error)
+    await bot.send_message(message.chat.id, 'Done', reply_markup=types.ReplyKeyboardRemove())
+    await start_moderator(message, state)
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMAdmin.sharing_start)
+async def start_sharing(message: types.Message, state: FSMContext):
+    for i in users_db.get_users_by_access('start'):
+        try:
+            await bot.send_message(i[0], message.text, reply_markup=inline_markup_get_bot())
         except Exception as error:
             print(error)
     await bot.send_message(message.chat.id, 'Done', reply_markup=types.ReplyKeyboardRemove())

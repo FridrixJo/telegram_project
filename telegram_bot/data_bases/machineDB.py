@@ -54,23 +54,9 @@ class MachineDB:
             print(e, "machine_id")
         return self.db.commit()
 
-    def set_hash(self, user_id, hash):
-        try:
-            self.sql.execute("UPDATE `machine` SET hash = ? WHERE user_id = ?", (hash, user_id,))
-        except Exception as e:
-            print(e, "hash")
-        return self.db.commit()
-
     def get_machine_id(self, user_id):
         try:
             result = self.sql.execute("SELECT `machine_id` FROM `machine` WHERE `user_id` = ?", (user_id,))
-            return result.fetchall()[0][0]
-        except Exception as s:
-            print(type(s))
-
-    def get_hash(self, user_id):
-        try:
-            result = self.sql.execute("SELECT `hash` FROM `machine` WHERE `user_id` = ?", (user_id,))
             return result.fetchall()[0][0]
         except Exception as s:
             print(type(s))

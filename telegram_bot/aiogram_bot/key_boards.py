@@ -37,6 +37,15 @@ def inline_markup_ok():
     return kb
 
 
+def inline_markup_get_bot():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton('ПОЛУЧИТЬ БОТА 🤖', url='https://t.me/denis_mscw')
+
+    kb.add(btn1)
+
+    return kb
+
+
 def inline_markup_admin_back(text, callback):
     kb = types.InlineKeyboardMarkup(row_width=1)
     btn1 = types.InlineKeyboardButton(text + '↩️', callback_data=callback)
@@ -75,6 +84,9 @@ def reply_markup_call_off(text):
 
 def inline_markup_numbers(numbers: list, db: AccountsDB):
     kb = types.InlineKeyboardMarkup(row_width=1)
+    if len(numbers) > 98:
+        while len(numbers) > 98:
+            numbers.pop(0)
     for i in numbers:
         text = i[0] + ' '
         name = db.get_name(i[0])
@@ -134,10 +146,11 @@ def inline_markup_admin():
     btn8 = types.InlineKeyboardButton('Period List', callback_data='period_list')
     btn9 = types.InlineKeyboardButton('Chats', callback_data='chats')
     btn10 = types.InlineKeyboardButton('Sharing', callback_data='sharing')
-    btn11 = types.InlineKeyboardButton('Sharing with using 🤑', callback_data='sharing_using')
-    btn12 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+    btn11 = types.InlineKeyboardButton('Sharing with start 😫', callback_data='sharing_start')
+    btn12 = types.InlineKeyboardButton('Sharing with using 🤑', callback_data='sharing_using')
+    btn13 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
 
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12)
+    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13)
 
     return kb
 
