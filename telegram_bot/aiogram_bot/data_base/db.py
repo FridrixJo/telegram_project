@@ -129,6 +129,13 @@ class AccountsDB:
             print(e, "set_condition")
         return self.db.commit()
 
+    def set_same_condition(self, condition):
+        try:
+            self.sql.execute("UPDATE accounts SET condition = ?", (condition,))
+        except Exception as e:
+            print(e, "set_same_condition")
+        return self.db.commit()
+
     def get_condition(self, phone_number):
         try:
             result = self.sql.execute("SELECT condition FROM accounts WHERE phone_number = ?", (phone_number,))

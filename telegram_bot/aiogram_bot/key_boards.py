@@ -145,12 +145,25 @@ def inline_markup_admin():
     btn7 = types.InlineKeyboardButton('Delete Function', callback_data='del_func')
     btn8 = types.InlineKeyboardButton('Period List', callback_data='period_list')
     btn9 = types.InlineKeyboardButton('Chats', callback_data='chats')
-    btn10 = types.InlineKeyboardButton('Sharing', callback_data='sharing')
-    btn11 = types.InlineKeyboardButton('Sharing with start 😫', callback_data='sharing_start')
-    btn12 = types.InlineKeyboardButton('Sharing with using 🤑', callback_data='sharing_using')
-    btn13 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+    btn10 = types.InlineKeyboardButton('Conditions', callback_data='conditions')
+    btn11 = types.InlineKeyboardButton('Sharing', callback_data='sharing')
+    btn12 = types.InlineKeyboardButton('Sharing with start 😫', callback_data='sharing_start')
+    btn13 = types.InlineKeyboardButton('Sharing with using 🤑', callback_data='sharing_using')
+    btn14 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
 
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13)
+    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14)
+
+    return kb
+
+
+def inline_markup_sub_admin():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+
+    btn1 = types.InlineKeyboardButton('Give access ✅', callback_data='give_access')
+    btn2 = types.InlineKeyboardButton('Take back access ❌', callback_data='take_back_access')
+    btn3 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+
+    kb.add(btn1, btn2, btn3)
 
     return kb
 
@@ -166,12 +179,23 @@ def inline_del_list_keyboard():
     return kb
 
 
-
 def inline_markup_users(users: list):
     kb = types.InlineKeyboardMarkup(row_width=1)
     for i in users:
         btn = types.InlineKeyboardButton(text=str(i[0] + ' ' + i[1]), callback_data=str(i[0]))
         kb.add(btn)
+
+    return kb
+
+
+def inline_markup_condition():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+
+    btn1 = types.InlineKeyboardButton('True', callback_data='true')
+    btn2 = types.InlineKeyboardButton('False', callback_data='false')
+    btn3 = types.InlineKeyboardButton('Back ↩', callback_data='back')
+
+    kb.add(btn1, btn2, btn3)
 
     return kb
 

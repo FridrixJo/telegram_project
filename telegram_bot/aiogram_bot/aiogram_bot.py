@@ -1,4 +1,5 @@
 import time
+import types
 
 from aiogram import Bot
 from aiogram import Dispatcher
@@ -33,6 +34,7 @@ class FSMWebScraper(StatesGroup):
     password = State()
     choice = State()
     chat = State()
+    minutes = State()
     mailing_text = State()
     telegram_code = State()
 
@@ -53,6 +55,14 @@ class FSMAdmin(StatesGroup):
     sharing_using = State()
     statistics = State()
     del_list = State()
+    condition = State()
+
+
+class FSMSubAdmin(StatesGroup):
+    sub_admin_opps = State()
+    input_user = State()
+    sub_days = State()
+    sub_cancel = State()
 
 
 db = AccountsDB('data_base/accounts.db')
@@ -63,7 +73,8 @@ machine_db = MachineDB('data_base/accounts.db')
 storage = MemoryStorage()
 
 bot = Bot(token='5583638970:AAE4WgvD77v0eMv1wBEdVkSPCFlSxQUse9U')
-#                5440048392:AAEnoo5T26t99sg7Hq8Hh3ojPcc5-Irzc6k
+#                5440048392:AAEnoo5T26t99sg7Hq8Hh3ojPcc5-Irzc6k     Message Spreader Bot
+#                5496675572:AAFluuZOMPQJUWTja4CIAVAY8fvjAmT-uTQ     SharkBet Bot
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
@@ -71,6 +82,9 @@ GlobalMachineList = []
 
 
 ADIMIN_IDS = [628860511, 899951880]
+
+SUB_ADMIN_IDS = []
+#               5256029946
 
 
 # MAIN MENU CALLBACK_QUERY_HANDLER
@@ -111,16 +125,19 @@ async def cancel_handler(message: types.Message, state: FSMContext):
         web_scraper_db.delete_user(message.chat.id)
         for i in GlobalList:
             if int(i['data'][1]) == message.chat.id:
-                web_scraper: WebScraper
-                web_scraper = i['data'][0]
-                await web_scraper.close()
+                try:
+                    web_scraper: WebScraper
+                    web_scraper = i['data'][0]
+                    await web_scraper.close()
+                except Exception as e:
+                    print(e)
                 GlobalList.remove(i)
     await clear_state(state)
     await bot.send_message(message.chat.id, '<i>Действие отменено</i> ↩', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     await send_menu(message)
 
 
-@dispatcher.message_handler(Text(equals='назад', ignore_case=True), state=[FSMWebScraper.chat, FSMWebScraper.mailing_text])
+@dispatcher.message_handler(Text(equals='назад', ignore_case=True), state=[FSMWebScraper.chat, FSMWebScraper.mailing_text, FSMWebScraper.minutes])
 async def cancel_handler(message: types.Message, state: FSMContext):
     await bot.send_message(message.chat.id, '<i>Действие отменено</i> ↩', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     async with state.proxy() as file:
@@ -137,12 +154,28 @@ async def cancel_input_user_id(message: types.Message, state: FSMContext):
     await FSMAdmin.admin_opportunities.set()
 
 
+@dispatcher.message_handler(Text(equals='Back', ignore_case=True), state=[FSMSubAdmin.input_user, FSMSubAdmin.sub_days])
+async def cancel_input_user_id(message: types.Message, state: FSMContext):
+    await clear_state(state)
+    await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
+    await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+    await FSMSubAdmin.sub_admin_opps.set()
+
+
 @dispatcher.callback_query_handler(state=FSMAdmin.cancel)
 async def admin_back(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'admin_back':
         await clear_state(state)
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
         await FSMAdmin.admin_opportunities.set()
+
+
+@dispatcher.callback_query_handler(state=FSMSubAdmin.sub_cancel)
+async def admin_back(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'admin_back':
+        await clear_state(state)
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do sub admin</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+        await FSMSubAdmin.sub_admin_opps.set()
 
 
 async def my_profile(call: types.CallbackQuery):
@@ -266,12 +299,18 @@ def get_name(message: types.Message):
 
 
 @dispatcher.message_handler(commands=['menu'])
-async def start_menu(message: types.Message):
+async def start_menu(message: types.Message, state: FSMContext):
     global GlobalList, GlobalMachineList
     if web_scraper_db.user_exists(message.chat.id):
+        web_scraper_db.delete_user(message.chat.id)
         for i in GlobalList:
             if int(i['data'][1]) == message.chat.id:
-                web_scraper_db.delete_user(message.chat.id)
+                try:
+                    web_scraper: WebScraper
+                    web_scraper = i['data'][0]
+                    await web_scraper.close()
+                except Exception as e:
+                    print(e)
                 GlobalList.remove(i)
     if machine_db.user_exists(message.chat.id):
         for i in GlobalMachineList:
@@ -443,8 +482,30 @@ async def get_chat(message: types.Message, state: FSMContext):
     async with state.proxy() as file:
         file['chat'] = message.text
     await bot.send_message(message.chat.id, '<i>Принято</i> ✅', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
-    await bot.send_message(message.chat.id, '🔹Отправьте сообщение для рассылки 📩', reply_markup=reply_markup_call_off('Назад'))
-    await FSMWebScraper.mailing_text.set()
+    text = '🔹Укажите максимальное время последней активности пользователей, которым будет писать бот (в минутах)⌚' + '\n\n'
+    text += '<i>Целое число от 5 до 1440</i>' + '\n\n'
+    await bot.send_message(message.chat.id, text=text, reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
+    await FSMWebScraper.minutes.set()
+
+
+# GET MINUTES
+
+@dispatcher.message_handler(content_types=['text'], state=FSMWebScraper.minutes)
+async def get_minutes(message: types.Message, state: FSMContext):
+    try:
+        minutes = int(message.text)
+        if minutes >= 5 and minutes <= 1440:
+            async with state.proxy() as file:
+                file['minutes'] = message.text
+            await bot.send_message(message.chat.id, '<i>Принято</i> ✅', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
+            await bot.send_message(message.chat.id, '🔹Отправьте сообщение для рассылки 📩', reply_markup=reply_markup_call_off('Назад'))
+            await FSMWebScraper.mailing_text.set()
+        else:
+            await bot.send_message(message.chat.id, '⛔Некорректный ввод: введите целое число минут от 5 до 1440')
+            await FSMWebScraper.minutes.set()
+    except Exception as e:
+        await bot.send_message(message.chat.id, '⛔Некорректный ввод: введите целое число минут от 5 до 1440')
+        await FSMWebScraper.minutes.set()
 
 
 # GET TEXT TO MAILING
@@ -462,7 +523,8 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
                              api_hash=db.get_api_hash(phone),
                              phone_number=phone,
                              chat_link=file['chat'],
-                             data=message.text)
+                             data=message.text,
+                             minutes=int(file['minutes']))
             db.set_mailing_message(phone, message.text)
             await bot.send_message(message.chat.id, '<i>Отправляем код в Telegram</i> ⏳', parse_mode='HTML')
             params = await machine.verify()
@@ -567,12 +629,17 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
 @dispatcher.message_handler(commands=['moderator'], state=['*'])
 async def start_moderator(message: types.Message, state: FSMContext):
     await clear_state(state)
-    if message.chat.id == 628860511 or message.chat.id == 899951880:
-        await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
-        await FSMAdmin.admin_opportunities.set()
+    for i in ADIMIN_IDS:
+        if message.chat.id == i:
+            await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+            await FSMAdmin.admin_opportunities.set()
+    for i in SUB_ADMIN_IDS:
+        if message.chat.id == i:
+            await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+            await FSMSubAdmin.sub_admin_opps.set()
+
 
 # MODERATOR OPPORTUNITIES
-
 
 @dispatcher.callback_query_handler(state=FSMAdmin.admin_opportunities)
 async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext):
@@ -622,6 +689,25 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
         await clear_state(state)
         await get_statistics(call)
         await FSMAdmin.statistics.set()
+    elif call.data == 'conditions':
+        text = '<i>Choose what condition all accounts are gonna have</i>'
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_condition(), parse_mode='HTML')
+        await FSMAdmin.condition.set()
+
+
+@dispatcher.callback_query_handler(state=FSMAdmin.condition)
+async def set_condition(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'back':
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+        await FSMAdmin.admin_opportunities.set()
+    elif call.data == 'true':
+        db.set_same_condition(True)
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+        await FSMAdmin.admin_opportunities.set()
+    elif call.data == 'false':
+        db.set_same_condition(False)
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+        await FSMAdmin.admin_opportunities.set()
 
 
 async def get_all_names(call: types.CallbackQuery):
@@ -874,6 +960,73 @@ async def get_days(message: types.Message, state: FSMContext):
         await bot.send_message(message.chat.id, 'Incorrect ⛔️, try one more time')
         await bot.send_message(message.chat.id, 'For how many days?')
         await FSMAdmin.days.set()
+
+
+# SUB ADMIN OPPORTUNITIES
+
+@dispatcher.callback_query_handler(state=FSMSubAdmin.sub_admin_opps)
+async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'give_access':
+        await bot.send_message(call.message.chat.id, 'Send me user ID', reply_markup=reply_markup_call_off('Back'))
+        async with state.proxy() as file:
+            file['access'] = 'give'
+        await FSMSubAdmin.input_user.set()
+    elif call.data == 'take_back_access':
+        await bot.send_message(call.message.chat.id, 'Send me user ID', reply_markup=reply_markup_call_off('Back'))
+        async with state.proxy() as file:
+            file['access'] = 'take_back'
+        await FSMSubAdmin.input_user.set()
+    elif call.data == 'main_menu':
+        await clear_state(state)
+        await edit_to_menu(call.message)
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMSubAdmin.input_user)
+async def get_user_id(message: types.Message, state: FSMContext):
+    await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
+    if users_db.user_exists(message.text):
+        async with state.proxy() as file:
+            access = file['access']
+            file['user_id'] = message.text
+        if access == 'give':
+            if users_db.get_access(message.text) == 'start':
+                await bot.send_message(message.chat.id, 'For how many days?', reply_markup=reply_markup_call_off('Cancel'))
+                await FSMSubAdmin.sub_days.set()
+            else:
+                await bot.send_message(message.chat.id, 'This user has already access to bot', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
+                await FSMSubAdmin.sub_cancel.set()
+        elif access == 'take_back':
+            users_db.set_access(message.text, 'start')
+            users_db.set_seconds(message.text, None)
+            users_db.set_time(message.text, None)
+            users_db.set_period(message.text, None)
+            await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{message.text}</b></a> was restricted', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+            await FSMSubAdmin.sub_cancel.set()
+    else:
+        await bot.send_message(message.chat.id, 'There is no such user', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
+        await FSMSubAdmin.sub_cancel.set()
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMSubAdmin.sub_days)
+async def get_days(message: types.Message, state: FSMContext):
+    await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
+    if float(message.text) > 0:
+        async with state.proxy() as file:
+            user_id = file['user_id']
+        users_db.set_access(user_id, 'using')
+        seconds = int(time.time())
+        users_db.set_seconds(user_id, seconds)
+        users_db.set_time(user_id, time.ctime(seconds))
+        users_db.set_period(user_id, message.text)
+        users_db.increment_purchases(user_id)
+        async with state.proxy() as file:
+            user_id = file['user_id']
+        await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{user_id}</b></a> was received', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+        await FSMSubAdmin.sub_cancel.set()
+    else:
+        await bot.send_message(message.chat.id, 'Incorrect ⛔️, try one more time')
+        await bot.send_message(message.chat.id, 'For how many days?')
+        await FSMSubAdmin.sub_days.set()
 
 
 try:

@@ -1,11 +1,6 @@
 import time
+import datetime
 
-#time1 = time.time()
-#print(time1/(3600*24))
+print(time.ctime(time.time()))
+print(datetime.datetime)
 
-#time.sleep(10)
-
-#time2 = time.time()
-print(bool(-132))
-
-#print(time2 - time1)
