@@ -18,6 +18,7 @@ class WebScraper:
     async def initialize(self):
         try:
             self.browser = await launch(options={"args": ['--no-sandbox']})
+            # self.browser = await launch(options={"headless": False})
             self.page = await self.browser.newPage()
             print(type(self.browser), type(self.page))
         except Exception as e:
@@ -142,89 +143,71 @@ class WebScraper:
 
     async def get_api(self, errors_db: ErrorsDB):
         try:
-            errors_db.set_error_status(self.phone, 'getting api')
+            errors_db.set_error_status(self.phone, 'gonna follow link')
 
-            link = await self.page.querySelector('a[href="/apps"]')
-            await link.press('Enter')
+            await self.page.goto('https://my.telegram.org/apps')
 
-            errors_db.set_error_status(self.phone, 'followed link')
+            errors_db.set_error_status(self.phone, 'gonna get all groups')
 
-            await asyncio.sleep(1)
+            groups = await self.page.querySelectorAll('div.form-group')
+            print(len(groups))
 
-            locks = await self.page.querySelectorAll('div.app_lock_tt')
+            if len(groups) != 12:
+                groups.clear()
+                try:
+                    app_title = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
+                    short_name = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
+                    print(app_title, short_name)
 
-            errors_db.set_error_status(self.phone, 'got locks')
+                    errors_db.set_error_status(self.phone, 'gonna insert app_title')
 
-            print(len(locks))
+                    app_title_input = await self.page.querySelector('input#app_title.form-control.input-xlarge')
+                    await app_title_input.type(app_title)
 
-            await asyncio.sleep(1)
+                    errors_db.set_error_status(self.phone, 'gonna insert short_name')
 
-            if len(locks) == 0:
-                errors_db.set_error_status(self.phone, '0 locks')
+                    short_name_input = await self.page.querySelector('input#app_shortname.form-control.input-xlarge')
+                    await short_name_input.type(short_name)
 
-                app_title = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
-                short_name = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
-                print(app_title, short_name)
+                    errors_db.set_error_status(self.phone, 'gonna get btn')
 
-                await self.page.type('input#app_title', app_title)
+                    btn = await self.page.querySelector('button#app_save_btn')
 
-                await asyncio.sleep(1)
+                    await asyncio.sleep(1)
 
-                await self.page.type('input#app_shortname', short_name)
+                    await btn.press('Enter')
 
-                errors_db.set_error_status(self.phone, 'got two fields')
+                    errors_db.set_error_status(self.phone, 'pressed btn')
+                    print('pressed button')
 
-                await asyncio.sleep(1)
+                    await asyncio.sleep(1)
+                    await self.page.reload()
+                    await asyncio.sleep(2)
 
-                btn = await self.page.querySelector('button#app_save_btn')
+                except Exception as e:
+                    print(e, 'create_application')
+                    return 0, 0, self.phone, False, 'sww'
 
-                await asyncio.sleep(1)
+            errors_db.set_error_status(self.phone, 'gonna get all groups')
 
-                await btn.press('Enter')
+            all_groups = await self.page.querySelectorAll('div.form-group')
+            if len(all_groups) == 12:
+                input_groups = await self.page.querySelectorAll('span.uneditable-input')
 
-                print('pressed button')
+                if len(input_groups):
+                    print(len(input_groups))
+                    errors_db.set_error_status(self.phone, 'ready to get api_id')
+                    api_id = await self.page.evaluate('(element) => element.textContent', input_groups[0])
 
-                errors_db.set_error_status(self.phone, 'got btn + pressed')
-
-                await asyncio.sleep(1)
-
-            errors_db.set_error_status(self.phone, 'getting locks')
-
-            try:
-                locks_after = await self.page.querySelectorAll('div.app_lock_tt')
-                await asyncio.sleep(1)
-
-                print(len(locks_after), 'locks_after')
-
-                errors_db.set_error_status(self.phone, 'got locks')
-
-                if len(locks_after) == 0:
-                    print('0 locks')
-                    return 0, 0, self.phone, False, '0 locks'
-            except Exception as e:
-                print(e)
-                return 0, 0, self.phone, False, '0 locks'
-
-            errors_db.set_error_status(self.phone, 'ready to get api')
-
-            try:
-                groups = await self.page.querySelectorAll('span.uneditable-input')
-            except Exception as e:
-                print(e)
-                return 0, 0, self.phone, False, e
-
-            if len(groups):
-                await asyncio.sleep(1)
-                errors_db.set_error_status(self.phone, 'ready to get api_id')
-                api_id = await self.page.evaluate('(element) => element.textContent', groups[0])
-
-                await asyncio.sleep(1)
-                errors_db.set_error_status(self.phone, 'ready to get api_hash')
-                api_hash = await self.page.evaluate('(element) => element.textContent', groups[1])
+                    errors_db.set_error_status(self.phone, 'ready to get api_hash')
+                    api_hash = await self.page.evaluate('(element) => element.textContent', input_groups[1])
+                else:
+                    return 0, 0, self.phone, False, 'there are not needed fields'
             else:
                 return 0, 0, self.phone, False, 'there are not needed fields'
+
         except Exception as e:
-            print(e)
+            print(e, 'get_api')
             await self.browser.close()
             return 0, 0, self.phone, False, e
 
@@ -235,6 +218,7 @@ class WebScraper:
         errors_db.set_error_status(self.phone, 'success')
 
         return api_id, api_hash, self.phone, True, 'OK'
+
 
 
 

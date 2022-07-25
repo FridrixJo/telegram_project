@@ -692,7 +692,7 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(users_db.get_periods_by('using')), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
         await FSMAdmin.cancel.set()
     elif call.data == 'chats':
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=str(db.get_all_chats()), reply_markup=inline_markup_admin_back('Back', 'admin_back'))
+        await get_all_chats(call)
         await FSMAdmin.cancel.set()
     elif call.data == 'sharing':
         await bot.send_message(call.message.chat.id, 'Input data for sharing', reply_markup=reply_markup_call_off('Cancel'))
@@ -732,13 +732,28 @@ async def get_all_names(call: types.CallbackQuery):
     name_list = users_db.get_all_names()
     text = f'Users quantity: <b>{len(name_list)}</b>' + '\n'
     for i in name_list:
-        text += i[0] + '\n'
+        if i[0] is not None:
+            text += i[0] + '\n'
     if len(text) > 4096:
         for x in range(0, len(text), 4096):
             await bot.send_message(call.message.chat.id, text[x:x+4096])
     else:
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, parse_mode='HTML')
-    await bot.send_message(call.message.chat.id, '<b>Весь список пользователей</b>', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+    await bot.send_message(call.message.chat.id, '<b>List if all users</b>', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+
+
+async def get_all_chats(call: types.CallbackQuery):
+    chats = db.get_all_chats()
+    text = f'Chats quantity: <b>{len(chats)}</b>' + '\n'
+    for i in chats:
+        if i[0] is not None:
+            text += i[0] + '\n'
+    if len(text) > 4096:
+        for x in range(0, len(text), 4096):
+            await bot.send_message(call.message.chat.id, text[x:x+4096])
+    else:
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, parse_mode='HTML')
+    await bot.send_message(call.message.chat.id, '<b>List of all chats</b>', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
 
 
 @dispatcher.callback_query_handler(state=FSMAdmin.del_list)
