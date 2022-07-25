@@ -21,6 +21,7 @@ from data_base.db import AccountsDB
 from data_base.db_users import UsersDB
 from data_base.wbDB import WebScraperDB
 from data_base.machineDB import MachineDB
+from data_base.errors_db import ErrorsDB
 
 from main_script import Script
 from asyncio_browser import WebScraper
@@ -57,29 +58,38 @@ class FSMAdmin(StatesGroup):
     del_list = State()
     condition = State()
 
+    choose_user_WS = State()
+    WS_numbers_or_back = State()
+    WS_back = State()
+
 
 class FSMSubAdmin(StatesGroup):
     sub_admin_opps = State()
     input_user = State()
     sub_days = State()
     sub_cancel = State()
+    sharing = State()
 
 
 db = AccountsDB('data_base/accounts.db')
 users_db = UsersDB('data_base/accounts.db')
 web_scraper_db = WebScraperDB('data_base/accounts.db')
 machine_db = MachineDB('data_base/accounts.db')
+errors_db = ErrorsDB('data_base/accounts.db')
 
 storage = MemoryStorage()
 
 bot = Bot(token='5583638970:AAE4WgvD77v0eMv1wBEdVkSPCFlSxQUse9U')
 #                5440048392:AAEnoo5T26t99sg7Hq8Hh3ojPcc5-Irzc6k     Message Spreader Bot
-#                5496675572:AAFluuZOMPQJUWTja4CIAVAY8fvjAmT-uTQ     SharkBet Bot
+#                5496675572:AAFpX4KOHcMBHhFwXQqimnGUxf5kQ8G5RYc     SharkBet Bot
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
 GlobalMachineList = []
 
+
+ADMIN_LINK = '@denis_mscw'
+#            '@shark_bet_admin'
 
 ADIMIN_IDS = [628860511, 899951880]
 
@@ -98,7 +108,7 @@ async def start(call: types.CallbackQuery):
             await bot.send_message(call.message.chat.id, '🔹Введи номер аккаунта Telegram ☎\nНомер формата <b>+7YYYXXXXXXX</b>, или формата любой другой страны\n<b>🔺Примечание:</b> знак ➕ должен обязательно находиться вначале номера', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
             await FSMWebScraper.number.set()
         else:
-            text = '<i>Вы не имеет доступ к боту ⛔️\nДля получения доступа напишите админу</i> <b>@denis_mscw</b> 👨‍💻'
+            text = f'<i>Вы не имеет доступ к боту ⛔️\nДля получения доступа напишите админу</i> <b>{ADMIN_LINK}</b> 👨‍💻'
             await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_back('Назад'), parse_mode='HTML')
 
     elif call.data == 'added_accounts':
@@ -106,7 +116,7 @@ async def start(call: types.CallbackQuery):
             await get_list_numbers(call)
             await FSMWebScraper.ListNumbers.set()
         else:
-            text = '<i>Вы не имеет доступ к боту ⛔️\nДля получения доступа напишите админу</i> <b>@denis_mscw</b> 👨‍💻'
+            text = f'<i>Вы не имеет доступ к боту ⛔️\nДля получения доступа напишите админу</i> <b>{ADMIN_LINK}</b> 👨‍💻'
             await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_back('Назад'), parse_mode='HTML')
     elif call.data == 'ok':
         await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
@@ -154,11 +164,11 @@ async def cancel_input_user_id(message: types.Message, state: FSMContext):
     await FSMAdmin.admin_opportunities.set()
 
 
-@dispatcher.message_handler(Text(equals='Back', ignore_case=True), state=[FSMSubAdmin.input_user, FSMSubAdmin.sub_days])
+@dispatcher.message_handler(Text(equals='Back', ignore_case=True), state=[FSMSubAdmin.input_user, FSMSubAdmin.sub_days, FSMSubAdmin.sharing])
 async def cancel_input_user_id(message: types.Message, state: FSMContext):
     await clear_state(state)
     await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
-    await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+    await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin 🦈</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
     await FSMSubAdmin.sub_admin_opps.set()
 
 
@@ -174,7 +184,7 @@ async def admin_back(call: types.CallbackQuery, state: FSMContext):
 async def admin_back(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'admin_back':
         await clear_state(state)
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do sub admin</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do sub admin 🦈</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
         await FSMSubAdmin.sub_admin_opps.set()
 
 
@@ -185,7 +195,7 @@ async def my_profile(call: types.CallbackQuery):
         login = '@' + call.from_user.username
     text += f'👤Ваш логин: {login}' + '\n'
     response = users_db.get_access(call.message.chat.id)
-    access = '<i>🙅‍♂️Вы не имеете доступа к боту, чтобы получить доступ, напишите админу</i> <b>@denis_mscw</b> 👨‍💻'
+    access = f'<i>🙅‍♂️Вы не имеете доступа к боту, чтобы получить доступ, напишите админу</i> <b>{ADMIN_LINK}</b> 👨‍💻'
     if response == 'using':
         seconds = users_db.get_seconds(call.message.chat.id)
         period = users_db.get_period(call.message.chat.id) * 24 * 3600
@@ -275,7 +285,10 @@ async def start(message: types.Message):
         users_db.set_access(message.chat.id, 'start')
         text = f'<i>User</i> <b>{name}</b> <i>started using bot</i> 🤖'
         for i in ADIMIN_IDS:
-            await bot.send_message(i, text, parse_mode='HTML')
+            try:
+                await bot.send_message(i, text, parse_mode='HTML')
+            except Exception as e:
+                print(e)
 
     await send_menu(message)
 
@@ -402,7 +415,7 @@ async def get_password(message: types.Message, state: FSMContext):
             count += 1
             actual_browser = i['data'][0]
             try:
-                params = await actual_browser.input_password(message.text)
+                params = await actual_browser.input_password(password=message.text, owner_id=message.chat.id, errors_db=errors_db)
                 if not params[0]:
                     if params[1] == 'alarm':
                         await actual_browser.remove_password_error()
@@ -410,11 +423,13 @@ async def get_password(message: types.Message, state: FSMContext):
                         await bot.send_message(message.chat.id, '⛔<b>Неверный код, попробуйте ввести код еще раз либо добавьте данный аккаунт позже</b>', reply_markup=reply_markup_call_off('Отмена'), parse_mode='HTML')
                         await FSMWebScraper.password.set()
                     else:
+                        web_scraper_db.delete_user(message.chat.id)
+                        GlobalList.remove(i)
                         await bot.delete_message(message.chat.id, wait.message_id)
                         await clear_state(state)
                         await bot.send_message(message.chat.id, '<b>Технические неполадки</b> 🛠... <i>Попробуйте позже или добавьте другой аккаунт</i>',  reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
                 else:
-                    api = await actual_browser.get_api()
+                    api = await actual_browser.get_api(errors_db)
                     web_scraper_db.delete_user(message.chat.id)
                     GlobalList.remove(i)
                     if not api[3]:
@@ -635,7 +650,7 @@ async def start_moderator(message: types.Message, state: FSMContext):
             await FSMAdmin.admin_opportunities.set()
     for i in SUB_ADMIN_IDS:
         if message.chat.id == i:
-            await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+            await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin 🦈</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
             await FSMSubAdmin.sub_admin_opps.set()
 
 
@@ -664,6 +679,9 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
     elif call.data == 'access_users':
         await get_list_using_users(call)
         await FSMAdmin.choose_user.set()
+    elif call.data == 'web_scraper':
+        await get_list_using_users(call)
+        await FSMAdmin.choose_user_WS.set()
     elif call.data == 'main_menu':
         await clear_state(state)
         await edit_to_menu(call.message)
@@ -836,6 +854,53 @@ async def get_list_using_users(call: types.CallbackQuery):
     await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='List of all users with access to bot', reply_markup=inline_markup_users(users).add(btn))
 
 
+@dispatcher.callback_query_handler(state=FSMAdmin.choose_user_WS)
+async def start(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'admin_back':
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+        await clear_state(state)
+        await FSMAdmin.admin_opportunities.set()
+    else:
+        for i in users_db.get_users_by_access('using'):
+            if str(i[0]) == call.data:
+
+                async with state.proxy() as file:
+                    file['user_id'] = str(i[0])
+
+                text = '<i>All numbers of user:</i>'
+                await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_numbers_web_scraper(phone=str(call.data), errors_db=errors_db), parse_mode='HTML')
+                await FSMAdmin.WS_numbers_or_back.set()
+
+
+@dispatcher.callback_query_handler(state=FSMAdmin.WS_numbers_or_back)
+async def start(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'admin_back':
+        await get_list_using_users(call)
+        await FSMAdmin.choose_user_WS.set()
+    else:
+        async with state.proxy() as file:
+            user_id = file['user_id']
+
+        for i in errors_db.get_numbers_by_owner_id(user_id):
+            if call.data == str(i[0]):
+
+                text = 'Information about number for <b>WS</b>' + '\n\n'
+                text += f'error_status: <i>{errors_db.get_error_status(i[0])}</i>'
+
+                await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+                await FSMAdmin.WS_back.set()
+
+
+@dispatcher.callback_query_handler(state=FSMAdmin.WS_back)
+async def start(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'admin_back':
+        async with state.proxy() as file:
+            user_id = file['user_id']
+        text = 'All numbers of user'
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_numbers_web_scraper(phone=str(user_id), errors_db=errors_db))
+        await FSMAdmin.WS_numbers_or_back.set()
+
+
 @dispatcher.callback_query_handler(state=FSMAdmin.choose_user)
 async def start(call: types.CallbackQuery, state: FSMContext):
     if call.data == 'admin_back':
@@ -843,7 +908,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
         await clear_state(state)
         await FSMAdmin.admin_opportunities.set()
     else:
-        for i in users_db.get_users():
+        for i in users_db.get_users_by_access('using'):
             if str(i[0]) == call.data:
                 user_id = str(i[0])
                 response = f'user_id: {user_id}' + '\n'
@@ -929,12 +994,16 @@ async def get_user_id(message: types.Message, state: FSMContext):
                 await bot.send_message(message.chat.id, 'This user has already access to bot', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
                 await FSMAdmin.cancel.set()
         elif access == 'take_back':
-            users_db.set_access(message.text, 'start')
-            users_db.set_seconds(message.text, None)
-            users_db.set_time(message.text, None)
-            users_db.set_period(message.text, None)
-            await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{message.text}</b></a> was restricted', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
-            await FSMAdmin.cancel.set()
+            if users_db.get_access(message.text) == 'using':
+                users_db.set_access(message.text, 'start')
+                users_db.set_seconds(message.text, None)
+                users_db.set_time(message.text, None)
+                users_db.set_period(message.text, None)
+                await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{message.text}</b></a> was restricted', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+                await FSMAdmin.cancel.set()
+            else:
+                await bot.send_message(message.chat.id, 'This user does not have access', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+                await FSMAdmin.cancel.set()
     else:
         await bot.send_message(message.chat.id, 'There is no such user', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
         await FSMAdmin.cancel.set()
@@ -976,6 +1045,10 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
         async with state.proxy() as file:
             file['access'] = 'take_back'
         await FSMSubAdmin.input_user.set()
+    elif call.data == 'sharing':
+        text = 'Send me text to send to all users of bot 🦈'
+        await bot.send_message(chat_id=call.message.chat.id, text=text, reply_markup=reply_markup_call_off('Back'))
+        await FSMSubAdmin.sharing.set()
     elif call.data == 'main_menu':
         await clear_state(state)
         await edit_to_menu(call.message)
@@ -996,12 +1069,16 @@ async def get_user_id(message: types.Message, state: FSMContext):
                 await bot.send_message(message.chat.id, 'This user has already access to bot', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
                 await FSMSubAdmin.sub_cancel.set()
         elif access == 'take_back':
-            users_db.set_access(message.text, 'start')
-            users_db.set_seconds(message.text, None)
-            users_db.set_time(message.text, None)
-            users_db.set_period(message.text, None)
-            await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{message.text}</b></a> was restricted', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
-            await FSMSubAdmin.sub_cancel.set()
+            if users_db.get_access(message.text) == 'using':
+                users_db.set_access(message.text, 'start')
+                users_db.set_seconds(message.text, None)
+                users_db.set_time(message.text, None)
+                users_db.set_period(message.text, None)
+                await bot.send_message(message.chat.id, f'Access for user with ChatID <a><b>{message.text}</b></a> was restricted', reply_markup=inline_markup_admin_back('Back', 'admin_back'), parse_mode='HTML')
+                await FSMSubAdmin.sub_cancel.set()
+            else:
+                await bot.send_message(message.chat.id, 'This user does not have access', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
+                await FSMSubAdmin.sub_cancel.set()
     else:
         await bot.send_message(message.chat.id, 'There is no such user', reply_markup=inline_markup_admin_back('Back', 'admin_back'))
         await FSMSubAdmin.sub_cancel.set()
@@ -1027,6 +1104,19 @@ async def get_days(message: types.Message, state: FSMContext):
         await bot.send_message(message.chat.id, 'Incorrect ⛔️, try one more time')
         await bot.send_message(message.chat.id, 'For how many days?')
         await FSMSubAdmin.sub_days.set()
+
+
+@dispatcher.message_handler(content_types=['text'], state=FSMSubAdmin.sharing)
+async def send_to_users(message: types.Message, state: FSMContext):
+    for i in users_db.get_users():
+        try:
+            await bot.send_message(chat_id=int(i[0]), text=message.text, reply_markup=inline_markup_ok())
+        except Exception as e:
+            print(e)
+
+    await bot.send_message(message.chat.id, 'Done ', reply_markup=types.ReplyKeyboardRemove())
+    await bot.send_message(message.chat.id, text='<i>What we gonna do sub admin 🦈</i>?', reply_markup=inline_markup_sub_admin(), parse_mode='HTML')
+    await FSMSubAdmin.sub_admin_opps.set()
 
 
 try:
