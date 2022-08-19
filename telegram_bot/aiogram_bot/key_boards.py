@@ -12,14 +12,15 @@ def inline_markup_menu():
 
     btn1 = types.InlineKeyboardButton('Добавить аккаунт', callback_data='add_account')
     btn2 = types.InlineKeyboardButton('Добавленные аккаунты', callback_data='added_accounts')
-    btn3 = types.InlineKeyboardButton('Админ 👨‍💻', url=ADMIN_LINK)
-    btn4 = types.InlineKeyboardButton('О боте 🤖', url='https://telegra.ph/Bot-dlya-rassylki-soobshchenij-Telegram-07-06')
-    btn5 = types.InlineKeyboardButton('Купить аккаунты Telegram 📲', url='https://5sim.net/')
+    btn3 = types.InlineKeyboardButton('Купить аккаунты Telegram 📲', url='https://5sim.net/')
+    btn4 = types.InlineKeyboardButton('📤 ПОЛНОЕ ОПИСАНИЕ БОТА 🤖', url='https://telegra.ph/Bot-dlya-rassylki-soobshchenij-Telegram-07-06')
+    btn5 = types.InlineKeyboardButton('Админ 👨‍💻', url=ADMIN_LINK)
     btn6 = types.InlineKeyboardButton('Мой профиль 💰', callback_data='profile')
 
-    kb.add(btn1, btn2, btn3, btn4)
-    kb.row(btn5)
-    kb.row(btn6)
+    kb.add(btn1, btn2)
+    kb.row(btn3)
+    kb.row(btn4)
+    kb.row(btn5, btn6)
 
     return kb
 

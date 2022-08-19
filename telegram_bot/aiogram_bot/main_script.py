@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 import pyrogram.errors.exceptions.bad_request_400
+import pyrogram.errors.exceptions.flood_420
 from pyrogram import Client
 from pyrogram.enums import UserStatus, ChatMemberStatus, SentCodeType, ChatMembersFilter
 from pyrogram.types import SentCode
@@ -160,6 +161,9 @@ class Script:
                     await self.app.send_message(i.user.id, self.data)
                     print('count', self.phone)
                     count += 1
+                except pyrogram.errors.exceptions.flood_420.FloodWait as e:
+                    print(f'await {e.value} seconds')
+                    await asyncio.sleep(int(e.value))
                 except pyrogram.errors.exceptions.bad_request_400.PeerFlood as e:
                     try:
                         await self.app.log_out()

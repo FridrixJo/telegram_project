@@ -786,34 +786,46 @@ async def del_access(message: types.Message):
 
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.sharing)
 async def start_sharing(message: types.Message, state: FSMContext):
+    count = 0
     for i in users_db.get_users():
         try:
             await bot.send_message(i[0], message.text, reply_markup=inline_markup_ok())
+            count += 1
         except Exception as error:
             print(error)
-    await bot.send_message(message.chat.id, 'Done', reply_markup=types.ReplyKeyboardRemove())
+
+    text = f'Message was sent to <b>{count}</b> users'
+    await bot.send_message(message.chat.id, text=text, reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     await start_moderator(message, state)
 
 
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.sharing_start)
 async def start_sharing(message: types.Message, state: FSMContext):
+    count = 0
     for i in users_db.get_users_by_access('start'):
         try:
             await bot.send_message(i[0], message.text, reply_markup=inline_markup_get_bot())
+            count += 1
         except Exception as error:
             print(error)
-    await bot.send_message(message.chat.id, 'Done', reply_markup=types.ReplyKeyboardRemove())
+
+    text = f'Message was sent to <b>{count}</b> users'
+    await bot.send_message(message.chat.id, text=text, reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     await start_moderator(message, state)
 
 
 @dispatcher.message_handler(content_types=['text'], state=FSMAdmin.sharing_using)
 async def start_sharing(message: types.Message, state: FSMContext):
+    count = 0
     for i in users_db.get_users_by_access('using'):
         try:
             await bot.send_message(i[0], message.text, reply_markup=inline_markup_ok())
+            count += 1
         except Exception as error:
             print(error)
-    await bot.send_message(message.chat.id, 'Done', reply_markup=types.ReplyKeyboardRemove())
+
+    text = f'Message was sent to <b>{count}</b> users'
+    await bot.send_message(message.chat.id, text=text, reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
     await start_moderator(message, state)
 
 
@@ -1031,7 +1043,7 @@ async def get_days(message: types.Message, state: FSMContext):
         async with state.proxy() as file:
             user_id = file['user_id']
         users_db.set_access(user_id, 'using')
-        seconds = int(time.time())
+        seconds = int(time.time()) + 3 * 3600
         users_db.set_seconds(user_id, seconds)
         users_db.set_time(user_id, time.ctime(seconds))
         users_db.set_period(user_id, message.text)
@@ -1127,6 +1139,7 @@ async def send_to_users(message: types.Message, state: FSMContext):
         try:
             await bot.send_message(chat_id=int(i[0]), text=message.text, reply_markup=inline_markup_ok())
         except Exception as e:
+            users_db.delete_user(int(i[0]))
             print(e)
 
     await bot.send_message(message.chat.id, 'Done ', reply_markup=types.ReplyKeyboardRemove())
