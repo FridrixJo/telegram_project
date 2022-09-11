@@ -94,20 +94,23 @@ class Script:
         return True, 'OK'
 
     async def check_chat_link(self):
-        reg = r'(https://t.me/joinchat)(.+)'
-        x = re.search(reg, self.chat_link)
-        if x is None:
-            reg = r'(https://t.me/)(.+)'
+        if '+' in self.chat_link:
+            pass
+        else:
+            reg = r'(https://t.me/joinchat)(.+)'
             x = re.search(reg, self.chat_link)
             if x is None:
-                reg = r'(t.me/)(.+)'
+                reg = r'(https://t.me/)(.+)'
                 x = re.search(reg, self.chat_link)
-                if x is not None:
+                if x is None:
+                    reg = r'(t.me/)(.+)'
+                    x = re.search(reg, self.chat_link)
+                    if x is not None:
+                        self.chat_link = '@'
+                        self.chat_link += x[2]
+                else:
                     self.chat_link = '@'
                     self.chat_link += x[2]
-            else:
-                self.chat_link = '@'
-                self.chat_link += x[2]
 
     def get_chat_link(self):
         return self.chat_link
@@ -131,7 +134,7 @@ class Script:
                     print(e, "adding members to list from chat")
             print(len(self.members))
         else:
-            return False, 'Чат является приватным, недоступным для парсинга'
+            return False, 'Чат является приватным. Ваш аккаунт должен быть участником данного чата'
 
         return True, 'OK'
 

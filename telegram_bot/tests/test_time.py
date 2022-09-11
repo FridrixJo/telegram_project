@@ -1,6 +1,7 @@
 import time
 import datetime
 
-print(time.ctime(time.time()))
-print(datetime.datetime)
+x = time.time()
+print(x)
+print(time.ctime(x))
 

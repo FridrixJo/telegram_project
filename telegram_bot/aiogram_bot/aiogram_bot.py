@@ -199,7 +199,7 @@ async def my_profile(call: types.CallbackQuery):
     if response == 'using':
         seconds = users_db.get_seconds(call.message.chat.id)
         period = users_db.get_period(call.message.chat.id) * 24 * 3600
-        access = f'<i>🗓Вы имеете доступ к боту до <b>{time.ctime(seconds + period)}</b></i>'
+        access = f'<i>🗓Вы имеете доступ к боту до <b>{time.ctime(seconds + period)} (UTC+3)</b></i>'
     text += access
     await bot.edit_message_text(chat_id=call.from_user.id, message_id=call.message.message_id, text=text, parse_mode='HTML', reply_markup=inline_markup_back('Назад'))
 
@@ -235,8 +235,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
             phone = file['phone']
         if db.get_condition(phone) == 0:
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            text = '🔹Отправьте ссылку на чат 🔗' + '\n\n'
-            text += '⚠<b>Примечание:</b> Бот не может пропарсить <i>Invite ссылку</i> (ссылка, начинающаяся со знака + после https://t.me/)'
+            text = '🔹Отправьте ссылку на Telegram чат 🔗' + '\n\n'
             await bot.send_message(call.message.chat.id, text=text, reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
             await FSMWebScraper.chat.set()
         else:
@@ -472,8 +471,7 @@ async def get_choice(call: types.CallbackQuery, state: FSMContext):
             phone = file['phone']
         if db.get_condition(phone) == 0:
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            text = '🔹Отправьте ссылку на чат 🔗' + '\n\n'
-            text += '⚠<b>Примечание:</b> Бот не может пропарсить <i>Invite ссылку</i> (ссылка, начинающаяся со знака + после https://t.me/)'
+            text = '🔹Отправьте ссылку на Telegram чат 🔗' + '\n\n'
             await bot.send_message(call.message.chat.id, text=text, reply_markup=reply_markup_call_off('Назад'), parse_mode='HTML')
             await FSMWebScraper.chat.set()
         else:
@@ -773,7 +771,6 @@ async def del_access(message: types.Message):
     await bot.send_message(message.chat.id, 'Ok', reply_markup=types.ReplyKeyboardRemove())
     text = 'Access was restricted on accounts with ChatID: \n'
     for i in users_by_period:
-        print((users_db.get_seconds(i[0]) + users_db.get_period(i[0])*24*3600) - time.time())
         if (users_db.get_seconds(i[0]) + users_db.get_period(i[0])*24*3600) - time.time() <= 0:
             users_db.set_access(i[0], 'start')
             users_db.set_seconds(i[0], None)
@@ -940,7 +937,7 @@ async def start(call: types.CallbackQuery, state: FSMContext):
                 user_id = str(i[0])
                 response = f'user_id: {user_id}' + '\n'
                 response += f'name: {users_db.get_name(user_id)}' + '\n'
-                response += f'access: {users_db.get_time(user_id)}' + '\n'
+                response += f'access: {users_db.get_time(user_id)} (UTC+3)' + '\n'
                 response += f'period: {users_db.get_period(user_id)}' + '\n'
                 response += f'Numbers quantity: {len(db.get_numbers_by_owner_id(user_id))}' + '\n'
                 response += f'Purchases: {users_db.get_purchases(user_id)}' + '\n'
@@ -1043,7 +1040,7 @@ async def get_days(message: types.Message, state: FSMContext):
         async with state.proxy() as file:
             user_id = file['user_id']
         users_db.set_access(user_id, 'using')
-        seconds = int(time.time()) + 3 * 3600
+        seconds = int(time.time())
         users_db.set_seconds(user_id, seconds)
         users_db.set_time(user_id, time.ctime(seconds))
         users_db.set_period(user_id, message.text)
