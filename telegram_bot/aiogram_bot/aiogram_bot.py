@@ -7,10 +7,10 @@ from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
 
 from key_boards import *
+from FSMClasses import *
 
 import asyncio
 
@@ -27,50 +27,6 @@ from main_script import Script
 from asyncio_browser import WebScraper
 
 
-class FSMWebScraper(StatesGroup):
-    ListNumbers = State()
-    opportunities = State()
-    last_chance = State()
-    number = State()
-    password = State()
-    choice = State()
-    chat = State()
-    minutes = State()
-    mailing_text = State()
-    telegram_code = State()
-
-
-class FSMAdmin(StatesGroup):
-    choose_user = State()
-    numbers_or_back = State()
-    choose_phone = State()
-    phone_info_back = State()
-    admin_opportunities = State()
-    cancel = State()
-    user = State()
-    days = State()
-    period_list = State()
-    del_param = State()
-    sharing = State()
-    sharing_start = State()
-    sharing_using = State()
-    statistics = State()
-    del_list = State()
-    condition = State()
-
-    choose_user_WS = State()
-    WS_numbers_or_back = State()
-    WS_back = State()
-
-
-class FSMSubAdmin(StatesGroup):
-    sub_admin_opps = State()
-    input_user = State()
-    sub_days = State()
-    sub_cancel = State()
-    sharing = State()
-
-
 db = AccountsDB('data_base/accounts.db')
 users_db = UsersDB('data_base/accounts.db')
 web_scraper_db = WebScraperDB('data_base/accounts.db')
@@ -79,8 +35,8 @@ errors_db = ErrorsDB('data_base/accounts.db')
 
 storage = MemoryStorage()
 
-bot = Bot(token='5583638970:AAE4WgvD77v0eMv1wBEdVkSPCFlSxQUse9U')
-#                5440048392:AAEnoo5T26t99sg7Hq8Hh3ojPcc5-Irzc6k     Message Spreader Bot
+bot = Bot(token='5639102308:AAHH4Ul2PMlg-M_OY1KbRiSNurrMWO4fa5g')
+#                5614214209:AAGd5_EDmW3whfDBwhqeG8l-Q-Rl3Npawps     Message Spreader Bot
 #                5496675572:AAFpX4KOHcMBHhFwXQqimnGUxf5kQ8G5RYc     SharkBet Bot
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
@@ -91,7 +47,7 @@ GlobalMachineList = []
 ADMIN_LINK = '@denis_mscw'
 #            '@shark_bet_admin'
 
-ADIMIN_IDS = [628860511, 899951880]
+ADIMIN_IDS = [899951880, 5405732922, 5408527612]
 
 SUB_ADMIN_IDS = []
 #               5256029946
@@ -220,6 +176,8 @@ async def start(call: types.CallbackQuery, state: FSMContext):
         await edit_to_menu(call.message)
         return
     numbers = db.get_numbers_by_owner_id(call.message.chat.id)
+    if len(numbers) > 20:
+        pass
     for i in numbers:
         if call.data == str(i[0]):
             async with state.proxy() as file:
@@ -510,15 +468,37 @@ async def get_minutes(message: types.Message, state: FSMContext):
         if minutes >= 5 and minutes <= 1440:
             async with state.proxy() as file:
                 file['minutes'] = message.text
+
             await bot.send_message(message.chat.id, '<i>Принято</i> ✅', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
-            await bot.send_message(message.chat.id, '🔹Отправьте сообщение для рассылки 📩', reply_markup=reply_markup_call_off('Назад'))
-            await FSMWebScraper.mailing_text.set()
+            text = '🔹Писать только пользователям с <i><b>Telegram Premium</b></i>🤑?' + '\n\n'
+            text += '<i>ℹБот осуществляет проверку пользователей на наличие Telegram Premium.</i>\n'
+            text += '<i>Нажав "Да", бот будет выбирать только премиум-пользователей для дальнейшей отправки сообщений 📤</i>'
+            await bot.send_message(message.chat.id, text=text, reply_markup=inline_markup_is_premium(), parse_mode='HTML')
+            await FSMWebScraper.is_premium.set()
         else:
             await bot.send_message(message.chat.id, '⛔Некорректный ввод: введите целое число минут от 5 до 1440')
             await FSMWebScraper.minutes.set()
     except Exception as e:
         await bot.send_message(message.chat.id, '⛔Некорректный ввод: введите целое число минут от 5 до 1440')
         await FSMWebScraper.minutes.set()
+
+
+# GET IS_PREMIUM USER
+
+@dispatcher.callback_query_handler(state=FSMWebScraper.is_premium)
+async def get_minutes(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'back':
+        await bot.send_message(call.message.chat.id, '<i>Действие отменено</i> ↩', reply_markup=types.ReplyKeyboardRemove(), parse_mode='HTML')
+        async with state.proxy() as file:
+            phone = file['phone']
+        await bot.send_message(chat_id=call.message.chat.id, text=f'<i>Аккаунт с номером</i> <code>{phone}</code>📱', reply_markup=inline_markup_opportunities(), parse_mode='HTML')
+        await FSMWebScraper.opportunities.set()
+    else:
+        async with state.proxy() as file:
+            file['is_premium'] = call.data
+
+        await bot.send_message(call.message.chat.id, '🔹Отправьте сообщение для рассылки 📩', reply_markup=reply_markup_call_off('Назад'))
+        await FSMWebScraper.mailing_text.set()
 
 
 # GET TEXT TO MAILING
@@ -537,9 +517,11 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
                              phone_number=phone,
                              chat_link=file['chat'],
                              data=message.text,
-                             minutes=int(file['minutes']))
+                             minutes=int(file['minutes']),
+                             is_premium=True if file['is_premium'] == 'yes' else False
+                             )
             db.set_mailing_message(phone, message.text)
-            await bot.send_message(message.chat.id, '<i>Отправляем код в Telegram</i> ⏳', parse_mode='HTML')
+            await bot.send_message(message.chat.id, '<i>Telegram отправляет код</i> ⏳', parse_mode='HTML')
             params = await machine.verify()
             if params[0]:
                 dict_machine = {'data': [machine, message.chat.id]}
@@ -550,7 +532,17 @@ async def get_mailing_text(message: types.Message, state: FSMContext):
                 global GlobalMachineList
                 GlobalMachineList.append(dict_machine)
 
-                await bot.send_message(message.chat.id, '🔹Введите код, отправленный вам в Telegram 🔢\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация', reply_markup=reply_markup_call_off('Не приходит код, вернуться на главное меню'), parse_mode='HTML')
+                text = ''
+                if params[1] == 'app':
+                    text += '🔹Введите код, отправленный вам в приложение Telegram 🔢\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация'
+                elif params[1] == 'call':
+                    text += '⚠️Telegram отправил вам код с помощью телефонного звонка на ваш номер 📞\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация'
+                elif params[1] == 'sms':
+                    text += '⚠️Telegram отправил вам код с помощью SMS на ваш номер 📞\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация'
+                elif params[1] == 'flash' or params[1] == 'missed':
+                    text += '⚠️Telegram отправил вам код с помощью звонка-сброса на ваш номер 📞\n❗<b>Примечание:</b> перед вводом кода убедитесь, что на аккаунте выключена двухэтапная аутентификация'
+
+                await bot.send_message(message.chat.id, text=text, reply_markup=reply_markup_call_off('Не приходит код, вернуться на главное меню'), parse_mode='HTML')
                 await FSMWebScraper.telegram_code.set()
             else:
                 await clear_state(state)

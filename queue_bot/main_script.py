@@ -18,7 +18,7 @@ import asyncio
 
 
 class Script:
-    def __init__(self, session_name, api_id, api_hash, phone_number, chat_link, data, minutes, is_premium: bool):
+    def __init__(self, session_name, api_id, api_hash, phone_number, chat_link, data, minutes):
         try:
             self.app = Client(name=session_name, api_id=api_id, api_hash=api_hash, phone_number=phone_number)
             self.data = data
@@ -27,7 +27,6 @@ class Script:
             self.sent_code: SentCode
             self.members = []
             self.minutes = int(minutes) + 1
-            self.is_premium = is_premium
         except Exception as e:
             print(e)
 
@@ -73,8 +72,6 @@ class Script:
             self.sent_code = await self.app.send_code(self.phone)
 
             if self.sent_code.type == SentCodeType.APP:
-                return True, 'app'
-            elif self.sent_code.type == SentCodeType.SMS:
                 return True, 'sms'
             elif self.sent_code.type == SentCodeType.CALL:
                 return True, 'call'
@@ -155,19 +152,21 @@ class Script:
         count = 0
         for _ in range(len(self.members)):
 
+            await asyncio.sleep(random.randrange(2, 3))
+
             i = random.choice(self.members)
             i: pyrogram.types.ChatMember
-
-            if self.is_premium is True:
-                if i.user.is_premium is not True:
-                    continue
 
             if i.user.status == UserStatus.OFFLINE:
                 dif = time.time() - i.user.last_online_date.timestamp()
                 print(dif)
                 if dif > self.minutes * 60:
+                    print('skipped offline time', self.phone)
                     continue
+                else:
+                    print('cool offline time')
             elif i.user.status != UserStatus.RECENTLY and i.user.status != UserStatus.ONLINE:
+                print('skipped a long time ago', self.phone)
                 continue
 
             if i.status == ChatMemberStatus.MEMBER and i.user.is_contact is False and await self.app.get_chat_history_count(i.user.id) == 0 and i.user.is_deleted is False:
@@ -175,8 +174,6 @@ class Script:
                     await self.app.send_message(i.user.id, self.data)
                     print('count', self.phone)
                     count += 1
-
-                    await asyncio.sleep(random.randrange(2, 3))
                 except pyrogram.errors.exceptions.flood_420.FloodWait as e:
                     print(f'await {e.value} seconds')
                     await asyncio.sleep(int(e.value))
