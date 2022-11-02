@@ -11,6 +11,7 @@ from aiogram.dispatcher.filters import Text
 
 from key_boards import *
 from FSMClasses import *
+from config import *
 
 import asyncio
 
@@ -35,9 +36,8 @@ errors_db = ErrorsDB('data_base/accounts.db')
 
 storage = MemoryStorage()
 
-bot = Bot(token='5639102308:AAHH4Ul2PMlg-M_OY1KbRiSNurrMWO4fa5g')
-#                5614214209:AAGd5_EDmW3whfDBwhqeG8l-Q-Rl3Npawps     Message Spreader Bot
-#                5496675572:AAFpX4KOHcMBHhFwXQqimnGUxf5kQ8G5RYc     SharkBet Bot
+bot = Bot(token=TOKEN_TEST_BOT)
+
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
 GlobalList = []
@@ -45,12 +45,10 @@ GlobalMachineList = []
 
 
 ADMIN_LINK = '@denis_mscw'
-#            '@shark_bet_admin'
 
-ADIMIN_IDS = [899951880, 5405732922, 5408527612]
+ADIMIN_IDS = [int(ADMIN_ID), 5405732922, 5408527612]
 
 SUB_ADMIN_IDS = []
-#               5256029946
 
 
 # MAIN MENU CALLBACK_QUERY_HANDLER
