@@ -36,7 +36,7 @@ errors_db = ErrorsDB('data_base/accounts.db')
 
 storage = MemoryStorage()
 
-bot = Bot(token=TOKEN_TEST_BOT)
+bot = Bot(token=TOKEN)
 
 dispatcher = Dispatcher(bot=bot, storage=storage)
 
@@ -607,7 +607,7 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                                     if message.chat.id != int(ADMIN_ID):
                                         admin_text = f'User: <b>{users_db.get_name(message.chat.id)}</b>' + '\n\n'
                                         admin_text += text
-                                        await bot.send_message(chat_id=int(ADMIN_ID), text=text, parse_mode='HTML')     # to admin
+                                        await bot.send_message(chat_id=int(ADMIN_ID), text=admin_text, parse_mode='HTML')     # to admin
                                 except Exception as e:
                                     print(e)
                             except Exception as error:
