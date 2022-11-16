@@ -48,7 +48,7 @@ ADMIN_LINK = '@denis_mscw'
 
 ADIMIN_IDS = [int(ADMIN_ID), 5405732922, 5408527612]
 
-SUB_ADMIN_IDS = []
+SUB_ADMIN_IDS = [4]
 
 
 # MAIN MENU CALLBACK_QUERY_HANDLER
@@ -601,7 +601,15 @@ async def get_telegram_code(message: types.Message, state: FSMContext):
                                 text = f'<i>🤖 Бот завершил работу\n на аккаунте</i> <code>{phone}</code> <b>{db.get_name(phone)} {db.get_username(phone)}</b>' + '\n'
                                 text += f'<i>📤 Количество отправленных\n сообщений:</i> <b>{writting_params[0]}</b>'
                                 db.set_condition(phone, False)
-                                await bot.send_message(message.chat.id, text, parse_mode='HTML', reply_markup=inline_markup_ok())
+                                try:
+                                    await bot.send_message(chat_id=message.chat.id, text=text, parse_mode='HTML', reply_markup=inline_markup_ok())  # to user
+
+                                    if message.chat.id != int(ADMIN_ID):
+                                        admin_text = f'User: <b>{users_db.get_name(message.chat.id)}</b>' + '\n\n'
+                                        admin_text += text
+                                        await bot.send_message(chat_id=int(ADMIN_ID), text=text, parse_mode='HTML')     # to admin
+                                except Exception as e:
+                                    print(e)
                             except Exception as error:
                                 print(error)
                                 db.set_condition(phone, False)
