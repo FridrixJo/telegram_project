@@ -1,203 +1,56 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
-import pyrogram.errors.exceptions.bad_request_400
-import pyrogram.errors.exceptions.flood_420
+import string
+
 from pyrogram import Client
-from pyrogram.enums import UserStatus, ChatMemberStatus, SentCodeType, ChatMembersFilter
-from pyrogram.types import SentCode
-
-import re
-
-from pyrogram.types import Chat, ChatPreview
-
+from pyrogram import types
+from data_base.queue import QueueDB
 import random
-
-import time
-
 import asyncio
 
+from config import *
 
-class Script:
-    def __init__(self, session_name, api_id, api_hash, phone_number, chat_link, data, minutes):
-        try:
-            self.app = Client(name=session_name, api_id=api_id, api_hash=api_hash, phone_number=phone_number)
-            self.data = data
-            self.chat_link = chat_link
-            self.phone = phone_number
-            self.sent_code: SentCode
-            self.members = []
-            self.minutes = int(minutes) + 1
-        except Exception as e:
-            print(e)
+db = QueueDB('data_base/queue.db')
 
-    def get_phone(self):
-        return self.phone
+app = Client(name='SESSION', api_id=API_ID, api_hash=API_HASH, phone_number=PHONE_NUMBER)
 
-    async def get_account_name(self):
-        try:
-            user: pyrogram.types.User
-            user = await self.app.get_me()
-            text = ''
-            first_name = user.first_name
-            last_name = user.last_name
-            if first_name is not None:
-                text += first_name + ' '
-            if last_name is not None:
-                text += last_name
 
-        except Exception as e:
-            print(e)
-            return 'error'
+PHRASES = [
+    'приветик, девушка ✌🏻' + '\n' + 'ты безумно красивая 😍',
+    'hi, my love ❤️',
+    'привет ✌🏻, ты слишком красивая 😘'
+]
 
-        return text
 
-    async def get_account_username(self):
-        try:
-            user: pyrogram.types.User
-            user = await self.app.get_me()
-            text = ''
-            username = user.username
-            if username is not None:
-                text += '@' + username
-
-        except Exception as e:
-            print(e)
-            return 'error'
-
-        return text
-
-    async def verify(self):
-        try:
-            await self.app.connect()
-            self.sent_code = await self.app.send_code(self.phone)
-
-            if self.sent_code.type == SentCodeType.APP:
-                return True, 'sms'
-            elif self.sent_code.type == SentCodeType.CALL:
-                return True, 'call'
-            elif self.sent_code.type == SentCodeType.FLASH_CALL:
-                return True, 'flash'
-            elif self.sent_code.type == SentCodeType.MISSED_CALL:
-                return True, 'missed'
-
-            print(self.sent_code)
-        except Exception as e:
-            print(e)
-            print(type(e))
-            return False, e
-
-        return True, 'OK'
-
-    async def input_code(self, telegram_code):
-        try:
-            print(self.sent_code)
-            await self.app.sign_in(phone_number=self.phone, phone_code_hash=str(self.sent_code.phone_code_hash), phone_code=str(telegram_code))
-        except pyrogram.errors.exceptions.PhoneCodeExpired as e:
-            return False, 'Код уже неактуален. Либо пытаетесь сделать рассылку на аккаунте, с которого управляете ботом, выберите другой аккаунт для рассылки'
-        except Exception as e:
-            print(type(e))
-            print(e)
-            print(e.args)
-            print('input code')
-            return False, e
-
-        return True, 'OK'
-
-    async def check_chat_link(self):
-        if '+' in self.chat_link:
-            pass
-        else:
-            reg = r'(https://t.me/joinchat)(.+)'
-            x = re.search(reg, self.chat_link)
-            if x is None:
-                reg = r'(https://t.me/)(.+)'
-                x = re.search(reg, self.chat_link)
-                if x is None:
-                    reg = r'(t.me/)(.+)'
-                    x = re.search(reg, self.chat_link)
-                    if x is not None:
-                        self.chat_link = '@'
-                        self.chat_link += x[2]
-                else:
-                    self.chat_link = '@'
-                    self.chat_link += x[2]
-
-    def get_chat_link(self):
-        return self.chat_link
-
-    async def get_chat_members(self):
-        await self.check_chat_link()
-        print(self.chat_link)
-        try:
-            chat = await self.app.get_chat(self.chat_link)
-        except Exception as e:
-            print(e, "getting chat")
-            return False, e
-
-        self.members = []
-
-        if type(chat) == pyrogram.types.Chat:
-            async for i in self.app.get_chat_members(chat_id=chat.id, filter=ChatMembersFilter.RECENT):
-                try:
-                    self.members.append(i)
-                except Exception as e:
-                    print(e, "adding members to list from chat")
-            print(len(self.members))
-        else:
-            return False, 'Чат является приватным. Ваш аккаунт должен быть участником данного чата'
-
-        return True, 'OK'
-
-    async def write(self):
-        count = 0
-        for _ in range(len(self.members)):
-
-            await asyncio.sleep(random.randrange(2, 3))
-
-            i = random.choice(self.members)
-            i: pyrogram.types.ChatMember
-
-            if i.user.status == UserStatus.OFFLINE:
-                dif = time.time() - i.user.last_online_date.timestamp()
-                print(dif)
-                if dif > self.minutes * 60:
-                    print('skipped offline time', self.phone)
-                    continue
-                else:
-                    print('cool offline time')
-            elif i.user.status != UserStatus.RECENTLY and i.user.status != UserStatus.ONLINE:
-                print('skipped a long time ago', self.phone)
-                continue
-
-            if i.status == ChatMemberStatus.MEMBER and i.user.is_contact is False and await self.app.get_chat_history_count(i.user.id) == 0 and i.user.is_deleted is False:
-                try:
-                    await self.app.send_message(i.user.id, self.data)
-                    print('count', self.phone)
-                    count += 1
-                except pyrogram.errors.exceptions.flood_420.FloodWait as e:
-                    print(f'await {e.value} seconds')
-                    await asyncio.sleep(int(e.value))
-                except pyrogram.errors.exceptions.bad_request_400.PeerFlood as e:
-                    try:
-                        await self.app.log_out()
-                    except Exception as e:
-                        print(e)
-
-                    print('account got spam')
-                    return count, 'LIMITED'
-
-                except Exception as e:
-                    print(e, "sending message to members from chat")
-                    print(type(e))
+@app.on_message()
+async def get_messages(client, message: types.Message):
+    if db.get_work() == 1:
+        if message.chat.id == CHAT_ID:
+            if message.from_user.id == TARGET_ID and db.get_head() != 1 and message.text != '.':
+                db.set_head(head=1)
+                db.inc_count()
+            elif message.text == db.get_symbol() or (message.text.find(db.get_symbol()) >= 0 and len(message.text) < 20):
+                if db.get_count() == db.get_admin_count():
+                    db.set_count(count=0)
+                    await app.send_message(chat_id=CHAT_ID, text=db.get_symbol())
+                    db.reset_conditions()
+                elif db.get_head() == 1:
+                    db.inc_count()
             else:
-                print('skipped', self.phone)
+                db.reset_conditions()
+        else:
+            if message.from_user.id == KATRINA_ID:
+                if 'привет' in message.text or 'Привет' in message.text:
+                    await app.send_message(chat_id=KATRINA_ID, text=PHRASES[random.randrange(1, len(PHRASES) - 1)])
+                elif 'спать' in message.text or 'Спать' in message.text or 'спишь' in message.text or 'Спишь' in message.text:
+                    text = 'я не могу без тебя спать ❤️'
+                    await app.send_message(chat_id=KATRINA_ID, text=text)
+            elif message.from_user.id == TTARGET_ID:
+                await app.send_message(chat_id=TTARGET_ID, text=f'{"".join(random.choice(string.ascii_letters + string.digits + string.hexdigits) for _ in range(16, 64))}')
 
-        try:
-            await self.app.log_out()
-        except Exception as e:
-            print(e)
-
-        return count, 'ALL_PEOPLE_PASSED'
-
+try:
+    app.run()
+except Exception as error:
+    print(error)
 
 
