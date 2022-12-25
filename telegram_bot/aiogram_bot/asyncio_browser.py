@@ -20,9 +20,13 @@ class WebScraper:
             self.browser = await launch(options={"args": ['--no-sandbox']})
             # self.browser = await launch(options={"headless": False})
             self.page = await self.browser.newPage()
+            await self.page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36')
+            await self.page.setExtraHTTPHeaders({
+                "X-Frame-Options": "GOFORIT"
+            })
             print(type(self.browser), type(self.page))
         except Exception as e:
-            print(e)
+            await self.close()
             return False, 'sww'
 
         print('OK')
@@ -57,10 +61,11 @@ class WebScraper:
                 if len(errors):
                     return False, 'alarm'
             except Exception as e:
+                await self.close()
                 print(e)
 
         except Exception as e:
-            print(e)
+            await self.close()
             return False, e
 
         return True, 'OK'
@@ -78,7 +83,7 @@ class WebScraper:
                 await input_number.press('Backspace')
 
         except Exception as e:
-            print(e)
+            await self.close()
             return False, e
 
         return True, 'OK'
@@ -96,7 +101,7 @@ class WebScraper:
                 await input_password.press('Backspace')
 
         except Exception as e:
-            print(e)
+            await self.close()
             return False, e
 
         return True, 'OK'
@@ -129,12 +134,13 @@ class WebScraper:
             try:
                 errors = await self.page.querySelectorAll('div.alert-danger')
                 if len(errors):
-                    print('alarm')
                     return False, 'alarm'
             except Exception as e:
+                await self.close()
                 print(e)
 
         except Exception as e:
+            await self.close()
             return False, e
 
         errors_db.set_error_status(self.phone, 'passed password')
@@ -147,26 +153,30 @@ class WebScraper:
 
             await self.page.goto('https://my.telegram.org/apps')
 
+            await asyncio.sleep(1)
+
             errors_db.set_error_status(self.phone, 'gonna get all groups')
 
             groups = await self.page.querySelectorAll('div.form-group')
-            print(len(groups))
+            print(len(groups), 'aye')
 
-            if len(groups) != 12:
-                groups.clear()
+            if len(groups):
                 try:
-                    app_title = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
-                    short_name = ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(random.randrange(8, 25)))
+                    app_title = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(8, 10)))
+                    short_name = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(8, 10)))
                     print(app_title, short_name)
 
-                    errors_db.set_error_status(self.phone, 'gonna insert app_title')
-
                     app_title_input = await self.page.querySelector('input#app_title.form-control.input-xlarge')
+                    short_name_input = await self.page.querySelector('input#app_shortname.form-control.input-xlarge')
+
+                    await asyncio.sleep(1)
+
+                    errors_db.set_error_status(self.phone, 'gonna insert app_title')
                     await app_title_input.type(app_title)
 
-                    errors_db.set_error_status(self.phone, 'gonna insert short_name')
+                    await asyncio.sleep(1)
 
-                    short_name_input = await self.page.querySelector('input#app_shortname.form-control.input-xlarge')
+                    errors_db.set_error_status(self.phone, 'gonna insert short_name')
                     await short_name_input.type(short_name)
 
                     errors_db.set_error_status(self.phone, 'gonna get btn')
@@ -178,13 +188,9 @@ class WebScraper:
                     await btn.press('Enter')
 
                     errors_db.set_error_status(self.phone, 'pressed btn')
-                    print('pressed button')
-
-                    await asyncio.sleep(1)
-                    await self.page.reload()
-                    await asyncio.sleep(2)
 
                 except Exception as e:
+                    await self.close()
                     print(e, 'create_application')
                     return 0, 0, self.phone, False, 'sww'
 
@@ -202,20 +208,24 @@ class WebScraper:
                     errors_db.set_error_status(self.phone, 'ready to get api_hash')
                     api_hash = await self.page.evaluate('(element) => element.textContent', input_groups[1])
                 else:
+                    await self.close()
                     return 0, 0, self.phone, False, 'there are not needed fields'
             else:
+                await self.close()
                 return 0, 0, self.phone, False, 'there are not needed fields'
 
         except Exception as e:
             print(e, 'get_api')
-            await self.browser.close()
+            await self.close()
             return 0, 0, self.phone, False, e
 
         errors_db.set_error_status(self.phone, 'got data + ready to close browser')
 
-        await self.browser.close()
+        await self.close()
 
         errors_db.set_error_status(self.phone, 'success')
+
+        print('all is well')
 
         return api_id, api_hash, self.phone, True, 'OK'
 

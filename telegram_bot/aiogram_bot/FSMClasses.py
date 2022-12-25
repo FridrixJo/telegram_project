@@ -16,7 +16,6 @@ class FSMAdmin(StatesGroup):
     sharing_start = State()
     sharing_using = State()
     statistics = State()
-    del_list = State()
     condition = State()
 
     choose_user_WS = State()

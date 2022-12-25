@@ -176,10 +176,10 @@ class Script:
                     print('count', self.phone)
                     count += 1
 
-                    await asyncio.sleep(random.randrange(2, 3))
+                    await asyncio.sleep(random.randrange(2, 5))
                 except pyrogram.errors.exceptions.flood_420.FloodWait as e:
                     print(f'await {e.value} seconds')
-                    await asyncio.sleep(int(e.value))
+                    await asyncio.sleep(int(e.value) + random.randrange(3, 5))
                 except pyrogram.errors.exceptions.bad_request_400.PeerFlood as e:
                     try:
                         await self.app.log_out()
