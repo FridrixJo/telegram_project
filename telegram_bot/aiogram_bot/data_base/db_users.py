@@ -68,6 +68,7 @@ class UsersDB:
         except Exception as e:
             print(e, "get_name")
 
+
     def get_all_names(self):
         try:
             result = self.sql.execute("SELECT name FROM `users`")

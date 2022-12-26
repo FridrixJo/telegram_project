@@ -17,6 +17,7 @@ class FSMAdmin(StatesGroup):
     sharing_using = State()
     statistics = State()
     condition = State()
+    manual_adding = State()
 
     choose_user_WS = State()
     WS_numbers_or_back = State()

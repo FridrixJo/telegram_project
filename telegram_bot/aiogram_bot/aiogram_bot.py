@@ -93,7 +93,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     await FSMWebScraper.opportunities.set()
 
 
-@dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=[FSMAdmin.user, FSMAdmin.sharing, FSMAdmin.del_param, FSMAdmin.sharing_start, FSMAdmin.sharing_using])
+@dispatcher.message_handler(Text(equals='cancel', ignore_case=True), state=[FSMAdmin.user, FSMAdmin.sharing, FSMAdmin.del_param, FSMAdmin.sharing_start, FSMAdmin.sharing_using, FSMAdmin.manual_adding])
 async def cancel_input_user_id(message: types.Message, state: FSMContext):
     await clear_state(state)
     await bot.send_message(message.chat.id, 'OKS', reply_markup=types.ReplyKeyboardRemove())
@@ -274,7 +274,7 @@ async def get_number(message: types.Message, state: FSMContext):
             file['phone'] = message.text
             phone = message.text
 
-        if db.account_exists(phone):
+        if db.account_exists_by_phone_name(phone_number=phone):
             db.set_status(phone, 'added')
             await bot.delete_message(message.chat.id, wait.message_id)
             await bot.send_message(message.chat.id, '<i>Аккаунт уже добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
@@ -358,23 +358,31 @@ async def get_password(message: types.Message, state: FSMContext):
                 await bot.send_message(message.chat.id, '<b>Технические неполадки</b> 🛠... <i>Попробуйте позже или добавьте другой аккаунт!!!</i>',  reply_markup=inline_markup_back('На главное меню'), parse_mode='HTML')
             else:
                 phone = api[2]
-                db.add_phone_number(phone)
-                db.set_api_id(phone, api[0])
-                db.set_api_hash(phone, api[1])
-                db.set_owner_id(phone, message.chat.id)
+                if not db.account_exists_by_api_hash(api_hash=api[1]):
+                    db.add_phone_number(phone)
+                    db.set_api_id(phone, api[0])
+                    db.set_api_hash(phone, api[1])
+                    db.set_owner_id(phone, message.chat.id)
 
-                if message.chat.id != int(ADMIN_ID):
-                    admin_text = f'User: <b>{users_db.get_name(message.chat.id)}</b>' + '\n\n'
-                    admin_text += f'Phone: <code>{phone}</code>' + '\n'
-                    admin_text += f'Api_id: <code>{api[0]}</code>' + '\n'
-                    admin_text += f'Api_hash: <code>{api[1]}</code>' + '\n\n'
-                    admin_text += 'Was successfully added'
+                    if message.chat.id != int(ADMIN_ID):
+                        admin_text = f'User: <b>{users_db.get_name(message.chat.id)}</b>' + '\n\n'
+                        admin_text += f'Phone: <code>{phone}</code>' + '\n'
+                        admin_text += f'Api_id: <code>{api[0]}</code>' + '\n'
+                        admin_text += f'Api_hash: <code>{api[1]}</code>' + '\n\n'
+                        admin_text += 'Was successfully added'
 
-                    await bot.send_message(chat_id=int(ADMIN_ID), text=admin_text, parse_mode='HTML')
+                        await bot.send_message(chat_id=int(ADMIN_ID), text=admin_text, parse_mode='HTML')
 
-                await bot.delete_message(message.chat.id, wait.message_id)
-                await bot.send_message(message.chat.id, '<i>Аккаунт успешно добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
-                await FSMWebScraper.choice.set()
+                    await bot.delete_message(message.chat.id, wait.message_id)
+                    await bot.send_message(message.chat.id, '<i>Аккаунт успешно добавлен</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
+                    await FSMWebScraper.choice.set()
+                else:
+                    phone_number = db.get_phone_number_by_api_hash(api_hash=api[1])
+                    db.set_status(phone_number=phone_number, status='added')
+                    await bot.delete_message(message.chat.id, wait.message_id)
+                    await bot.send_message(message.chat.id, '<i>Аккаунт уже был добавлен в бота ранее</i> 🧩', reply_markup=inline_markup_choice(), parse_mode='HTML')
+                    await FSMWebScraper.choice.set()
+
     except Exception as e:
         await bot.delete_message(message.chat.id, wait.message_id)
         await clear_state(state)
@@ -648,6 +656,10 @@ async def start_admin_opportunities(call: types.CallbackQuery, state: FSMContext
         await clear_state(state)
         await get_statistics(call)
         await FSMAdmin.statistics.set()
+    elif call.data == 'manual_adding':
+        text = '<i>Input API data</i>'
+        await bot.send_message(chat_id=call.message.chat.id, text=text, parse_mode='HTML', reply_markup=reply_markup_call_off('Cancel'))
+        await FSMAdmin.manual_adding.set()
     elif call.data == 'conditions':
         text = '<i>Choose what condition all accounts are gonna have</i>'
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=inline_markup_condition(), parse_mode='HTML')
@@ -667,6 +679,41 @@ async def set_condition(call: types.CallbackQuery, state: FSMContext):
         db.set_same_condition(False)
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
         await FSMAdmin.admin_opportunities.set()
+
+
+async def get_data(data: str):
+    data_list = data.split('\n')
+    api_data = []
+    for i in data_list:
+        if len(i) >= 6:
+            api_data.append(i)
+
+    if len(api_data) == 4:
+        return api_data
+    else:
+        raise Exception('Wrong data')
+
+
+@dispatcher.message_handler(state=FSMAdmin.manual_adding)
+async def update_database(message: types.Message, state: FSMContext):
+    try:
+        api_data = await get_data(message.text)
+        if not db.account_exists_by_api_hash(api_hash=api_data[0]):
+            db.add_account_manually(phone_number=api_data[2], api_id=api_data[1], api_hash=api_data[0], owner_id=api_data[3])
+            text = '<i>Account was successfully added onto database</i>'
+        else:
+            text = '<i>This account is already in database</i>'
+            phone_number = db.get_phone_number_by_api_hash(api_hash=api_data[0])
+            print(phone_number)
+            db.set_status(phone_number=phone_number, status='added')
+        await bot.send_message(chat_id=message.chat.id, text=text, parse_mode='HTML', reply_markup=types.ReplyKeyboardRemove())
+        await bot.send_message(message.chat.id, text='<i>What we gonna do machineglytkelly👨‍💻</i>?', reply_markup=inline_markup_admin(), parse_mode='HTML')
+        await FSMAdmin.admin_opportunities.set()
+    except Exception as e:
+        print(e)
+        text = '<i>Something went wrong, try to add one more time</i>'
+        await bot.send_message(chat_id=message.chat.id, text=text, parse_mode='HTML', reply_markup=reply_markup_call_off('Cancel'))
+        await FSMAdmin.manual_adding.set()
 
 
 async def get_all_names(call: types.CallbackQuery):

@@ -185,9 +185,10 @@ def inline_markup_admin():
     btn12 = types.InlineKeyboardButton('Sharing', callback_data='sharing')
     btn13 = types.InlineKeyboardButton('Sharing with start 😫', callback_data='sharing_start')
     btn14 = types.InlineKeyboardButton('Sharing with using 🤑', callback_data='sharing_using')
-    btn15 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
+    btn15 = types.InlineKeyboardButton('Manual adding accounts', callback_data='manual_adding')
+    btn16 = types.InlineKeyboardButton('Main menu', callback_data='main_menu')
 
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15)
+    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15, btn16)
 
     return kb
 

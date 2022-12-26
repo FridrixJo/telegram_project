@@ -16,6 +16,13 @@ class AccountsDB:
             print(e, "add_account")
         return self.db.commit()
 
+    def add_account_manually(self, api_hash, api_id, phone_number, owner_id, status='added', message_count=0):
+        try:
+            self.sql.execute("INSERT INTO accounts (`phone_number`, `api_id`, `api_hash`, `owner_id`, 'status', `message_count`) VALUES (?, ?, ?, ?, ?, ?)", (phone_number, api_id, api_hash, owner_id, status, message_count))
+        except Exception as e:
+            print(e, "add_account_manually")
+        return self.db.commit()
+
     def delete_phone_number(self, phone_number):
         try:
             self.sql.execute("DELETE FROM accounts WHERE phone_number = ?", (phone_number,))
@@ -65,11 +72,19 @@ class AccountsDB:
             print(e, "get_all_added_numbers")
         return result.fetchall()
 
-    def account_exists(self, phone_number):
+    def account_exists_by_phone_name(self, phone_number):
         try:
             result = self.sql.execute("SELECT id FROM accounts WHERE phone_number = ?",(phone_number,))
         except Exception as s:
-            print(s, "account_exists")
+            print(s, "account_exists_by_phone_number")
+
+        return bool(len(result.fetchall()))
+
+    def account_exists_by_api_hash(self, api_hash):
+        try:
+            result = self.sql.execute("SELECT id FROM accounts WHERE api_hash = ?", (api_hash,))
+        except Exception as s:
+            print(s, "account_exists_by_api_hash")
 
         return bool(len(result.fetchall()))
 
@@ -85,6 +100,13 @@ class AccountsDB:
             result = self.sql.execute("SELECT api_id FROM accounts WHERE phone_number = ?",(phone_number,))
         except Exception as e:
             print(e, "get_api_id")
+        return result.fetchall()[0][0]
+
+    def get_phone_number_by_api_hash(self, api_hash):
+        try:
+            result = self.sql.execute("SELECT phone_number FROM accounts WHERE api_hash = ?", (api_hash,))
+        except Exception as e:
+            print(e, "get_phone_number_by_api_hash")
         return result.fetchall()[0][0]
 
     def set_api_hash(self, phone_number, api_hash):
