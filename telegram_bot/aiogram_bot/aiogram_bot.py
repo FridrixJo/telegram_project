@@ -686,7 +686,7 @@ async def get_data(data: str):
     api_data = []
     for i in data_list:
         if len(i) >= 6:
-            api_data.append(i)
+            api_data.append(i.strip())
 
     if len(api_data) == 4:
         return api_data
